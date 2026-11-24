@@ -29,6 +29,7 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
+import android.view.RoundedCorner;
 import android.view.View;
 import android.view.ViewConfiguration;
 import android.view.ViewGroup;
@@ -104,7 +105,10 @@ public class MainActivity extends Activity {
 
     private SharedPreferences prefs;
     private WebView web;
+    private FrameLayout root;
     private TextView fab;
+    private boolean fabInBand;
+    private int cutTop, cutBottom, cornerTop, cornerBottom;
     private ProgressBar progress;
     private View splash;
     private View errorView;
@@ -125,12 +129,12 @@ public class MainActivity extends Activity {
         prefs = getSharedPreferences("rbf", MODE_PRIVATE);
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
-        FrameLayout root = new FrameLayout(this);
-        root.setBackgroundColor(Color.BLACK);
+        root = new FrameLayout(this);
+        root.setBackgroundColor(0xFF07060C);
 
         web = new WebView(this);
         setupWeb(web);
-        root.addView(web, new FrameLayout.LayoutParams(-1, -1));
+        root.addView(web, new FrameLayout.LayoutParams(-1, -1, Gravity.TOP));
 
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
         progress.setMax(100);
@@ -147,12 +151,28 @@ public class MainActivity extends Activity {
         root.addView(splash, new FrameLayout.LayoutParams(-1, -1));
 
         fab = buildFab();
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.BOTTOM | Gravity.END);
-        lp.setMargins(0, 0, dp(14), dp(70));
-        root.addView(fab, lp);
-        fab.setTranslationX(prefs.getFloat("fab_x", 0f));
-        fab.setTranslationY(prefs.getFloat("fab_y", 0f));
+        root.addView(fab, new FrameLayout.LayoutParams(0, 0, Gravity.BOTTOM | Gravity.END));
         setContentView(root);
+
+        // Encoche, coins arrondis : on mesure les zones à éviter puis on place le jeu
+        root.setOnApplyWindowInsetsListener((v, insets) -> {
+            cutTop = cutBottom = cornerTop = cornerBottom = 0;
+            if (Build.VERSION.SDK_INT >= 28 && insets.getDisplayCutout() != null) {
+                cutTop = insets.getDisplayCutout().getSafeInsetTop();
+                cutBottom = insets.getDisplayCutout().getSafeInsetBottom();
+            }
+            if (Build.VERSION.SDK_INT >= 31) {
+                RoundedCorner tl = insets.getRoundedCorner(RoundedCorner.POSITION_TOP_LEFT);
+                RoundedCorner bl = insets.getRoundedCorner(RoundedCorner.POSITION_BOTTOM_LEFT);
+                if (tl != null) cornerTop = tl.getRadius();
+                if (bl != null) cornerBottom = bl.getRadius();
+            }
+            root.post(this::layoutGame);
+            return insets;
+        });
+        root.addOnLayoutChangeListener((v, l, t, rr, b, ol, ot, or, ob) -> {
+            if (rr - l != or - ol || b - t != ob - ot) root.post(this::layoutGame);
+        });
 
         docStartSupported = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT);
         if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
@@ -605,12 +625,73 @@ public class MainActivity extends Activity {
                     | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                     : View.SYSTEM_UI_FLAG_VISIBLE);
         }
+        if (root != null) root.post(this::layoutGame);
         if (Build.VERSION.SDK_INT >= 28) {
             WindowManager.LayoutParams a = w.getAttributes();
             a.layoutInDisplayCutoutMode = full
                     ? WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
                     : WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_DEFAULT;
             w.setAttributes(a);
+        }
+    }
+
+    // ───────────────────────────── Placement du jeu ─────────────────────────────
+
+    /**
+     * Le jeu est dessiné pour un écran 16:9. Sur un téléphone plus allongé, on garde ce format
+     * (bandes discrètes en haut et en bas, comme une console) au lieu d'un grand vide noir,
+     * et on évite l'encoche de la caméra et les coins arrondis.
+     */
+    private void layoutGame() {
+        int w = root.getWidth(), h = root.getHeight();
+        if (w == 0 || h == 0) return;
+        boolean full = opt("fullscreen", true);
+        // Coins arrondis : la partie utile commence à environ 30 % du rayon
+        int safeTop = full ? Math.max(cutTop, Math.round(cornerTop * 0.3f)) : 0;
+        int safeBottom = full ? Math.max(cutBottom, Math.round(cornerBottom * 0.3f)) : 0;
+        int avail = h - safeTop - safeBottom;
+        int webH = avail, top = safeTop;
+        if (opt("format169", true)) {
+            int ideal = Math.round(w * 16f / 9f);
+            if (avail > ideal) {
+                webH = ideal;
+                top = safeTop + (avail - ideal) / 2;
+            }
+        }
+        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) web.getLayoutParams();
+        if (lp.height != webH || lp.topMargin != top) {
+            lp.height = webH;
+            lp.topMargin = top;
+            lp.gravity = Gravity.TOP;
+            web.setLayoutParams(lp);
+            FrameLayout.LayoutParams pl = (FrameLayout.LayoutParams) progress.getLayoutParams();
+            pl.topMargin = top;
+            progress.setLayoutParams(pl);
+        }
+        // Bouton ☰ : rangé dans la bande du bas s'il y a la place, sinon flottant
+        int band = h - (top + webH);
+        FrameLayout.LayoutParams fl = (FrameLayout.LayoutParams) fab.getLayoutParams();
+        boolean inBand = band >= dp(50);
+        if (inBand != fabInBand || fl.width == 0) {
+            fabInBand = inBand;
+            if (inBand) {
+                fl.width = dp(40);
+                fl.height = dp(40);
+                fl.gravity = Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL;
+                fl.setMargins(0, 0, 0, Math.max(0, (band - dp(40)) / 2));
+                fab.setTranslationX(0);
+                fab.setTranslationY(0);
+                fab.setAlpha(0.9f);
+            } else {
+                fl.width = dp(48);
+                fl.height = dp(48);
+                fl.gravity = Gravity.BOTTOM | Gravity.END;
+                fl.setMargins(0, 0, dp(14), dp(70));
+                fab.setTranslationX(prefs.getFloat("fab_x", 0f));
+                fab.setTranslationY(prefs.getFloat("fab_y", 0f));
+                fab.setAlpha(0.65f);
+            }
+            fab.setLayoutParams(fl);
         }
     }
 
@@ -690,14 +771,14 @@ public class MainActivity extends Activity {
                         return true;
                     case MotionEvent.ACTION_MOVE:
                         float dx = e.getRawX() - downX, dy = e.getRawY() - downY;
-                        if (!dragging && Math.hypot(dx, dy) > slop) dragging = true;
+                        if (!dragging && !fabInBand && Math.hypot(dx, dy) > slop) dragging = true;
                         if (dragging) {
                             v.setTranslationX(startTx + dx);
                             v.setTranslationY(startTy + dy);
                         }
                         return true;
                     case MotionEvent.ACTION_UP:
-                        v.setAlpha(0.65f);
+                        v.setAlpha(fabInBand ? 0.9f : 0.65f);
                         if (dragging) {
                             prefs.edit().putFloat("fab_x", v.getTranslationX()).putFloat("fab_y", v.getTranslationY()).apply();
                         } else {
@@ -707,7 +788,7 @@ public class MainActivity extends Activity {
                         }
                         return true;
                     case MotionEvent.ACTION_CANCEL:
-                        v.setAlpha(0.65f);
+                        v.setAlpha(fabInBand ? 0.9f : 0.65f);
                         return true;
                 }
                 return false;
@@ -977,6 +1058,7 @@ public class MainActivity extends Activity {
         optionRow(box, "antipause", "Anti-pause", "Le jeu continue même si l'appli passe derrière ou si une notification arrive.", true);
         optionRow(box, "screen_on", "Écran toujours allumé", "L'écran ne se met pas en veille pendant que le jeu est ouvert.", true);
         optionRow(box, "fullscreen", "Plein écran", "Cache les barres du téléphone.", true);
+        optionRow(box, "format169", "Format du jeu (16:9)", "Garde les proportions prévues par le jeu : plus de grand vide noir, rien sous la caméra. Le bouton ☰ se range dans la bande du bas.", true);
         optionRow(box, "hd", "Filtre HD", "Images un peu plus nettes et colorées.", false);
 
         LinearLayout actions = new LinearLayout(this);

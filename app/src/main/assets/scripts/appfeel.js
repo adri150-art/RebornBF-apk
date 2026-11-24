@@ -33,6 +33,26 @@
     main.classList.add('rbf-in');
   }, 150);
 
+  // Bulle « Report an Issue » : plus discrète pour ne plus cacher le carrousel
+  function shrinkReport() {
+    if (location.pathname.startsWith('/battle')) return;
+    const leaf = [...document.querySelectorAll('a,button,div,span,p,strong,b')]
+      .find((e) => e.childElementCount === 0 && /^report an issue$/i.test((e.textContent || '').trim()));
+    if (!leaf) return;
+    let el = leaf;
+    for (let i = 0; i < 6 && el && el.parentElement; i++) {
+      const pos = getComputedStyle(el).position;
+      if (el.tagName === 'A' || el.tagName === 'BUTTON' || pos === 'fixed' || pos === 'absolute') break;
+      el = el.parentElement;
+    }
+    if (!el || el.dataset.rbfSmall) return;
+    el.dataset.rbfSmall = '1';
+    el.style.transform = 'scale(.62)';
+    el.style.transformOrigin = 'right top';
+    el.style.opacity = '.8';
+  }
+  setInterval(shrinkReport, 2000);
+
   // Vibration légère quand on touche un bouton
   document.addEventListener('pointerdown', (e) => {
     const t = e.target && e.target.closest && e.target.closest('button,a[href],[role="button"],canvas');
