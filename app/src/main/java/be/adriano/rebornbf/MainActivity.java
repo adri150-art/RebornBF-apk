@@ -242,16 +242,30 @@ public class MainActivity extends Activity {
         w.setWebChromeClient(new GameChrome());
     }
 
-    /** Domaines qui restent dans l'appli (le jeu + la connexion Google). */
-    private static boolean inApp(Uri u) {
-        String h = u.getHost();
-        if (h == null) return true;
-        h = h.toLowerCase(Locale.ROOT);
-        return h.equals("rebornbf.com") || h.endsWith(".rebornbf.com")
-                || h.equals("google.com") || h.endsWith(".google.com") || h.contains(".google.")
-                || h.endsWith(".gstatic.com") || h.endsWith(".googleusercontent.com")
-                || h.endsWith(".googleapis.com") || h.endsWith(".firebaseapp.com")
-                || h.equals("accounts.youtube.com");
+    /** Liens à ouvrir hors de l'appli : seulement des sites sans rapport avec le jeu ou la connexion. */
+    private static boolean openOutside(Uri u) {
+        String h = u.getHost() == null ? "" : u.getHost().toLowerCase(Locale.ROOT);
+        String p = u.getPath() == null ? "" : u.getPath();
+        if (h.equals("discord.gg") || ((h.equals("discord.com") || h.endsWith(".discord.com")) && p.startsWith("/invite"))) return true;
+        String[] out = {"youtube.com", "youtu.be", "twitter.com", "x.com", "reddit.com", "facebook.com", "instagram.com",
+                "tiktok.com", "wikipedia.org", "fandom.com", "play.google.com", "apps.apple.com", "patreon.com", "ko-fi.com", "github.com"};
+        for (String d : out) if (h.equals(d) || h.endsWith("." + d)) return !h.equals("accounts.youtube.com");
+        return false;
+    }
+
+    private static String shortUrl(Uri u) {
+        String p = u.getPath() == null ? "" : u.getPath();
+        if (p.length() > 40) p = p.substring(0, 40) + "…";
+        return (u.getHost() == null ? u.getScheme() : u.getHost()) + p;
+    }
+
+    /** Petit journal des pages visitées (sans les paramètres, donc sans jeton) pour diagnostiquer la connexion. */
+    private void log(String line) {
+        String t = new java.text.SimpleDateFormat("HH:mm:ss", Locale.ROOT).format(new java.util.Date());
+        String old = prefs.getString("journal", "");
+        String all = t + "  " + line + "\n" + old;
+        if (all.length() > 4000) all = all.substring(0, 4000);
+        prefs.edit().putString("journal", all).apply();
     }
 
     private static boolean isGame(Uri u) {
@@ -274,9 +288,10 @@ public class MainActivity extends Activity {
             Uri u = req.getUrl();
             String scheme = u.getScheme() == null ? "" : u.getScheme();
             if (scheme.equals("http") || scheme.equals("https")) {
-                // Redirections et navigations du jeu (connexion…) : on reste dans l'appli.
-                // Un lien touché vers un autre site s'ouvre dans le navigateur.
-                if (inApp(u) || req.isRedirect() || !req.hasGesture() || isPopup) return false;
+                if (req.isForMainFrame()) log((isPopup ? "fenêtre → " : "→ ") + shortUrl(u));
+                // Tout reste dans l'appli (le jeu, Google, Discord, le service de connexion…).
+                // Seuls les liens touchés vers des sites sans rapport (YouTube, invitation Discord…) sortent.
+                if (isPopup || req.isRedirect() || !req.hasGesture() || !openOutside(u)) return false;
             }
             openExternal(u);
             return true;
@@ -302,6 +317,7 @@ public class MainActivity extends Activity {
 
         @Override
         public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
+            if (req.isForMainFrame()) log("✖ erreur " + err.getErrorCode() + " sur " + shortUrl(req.getUrl()));
             if (!isPopup && req.isForMainFrame()) {
                 hideSplash();
                 errorView.setVisibility(View.VISIBLE);
@@ -328,6 +344,7 @@ public class MainActivity extends Activity {
         @Override
         public boolean onCreateWindow(WebView view, boolean isDialog, boolean userGesture, Message resultMsg) {
             // Fenêtre de connexion (popup Google) ouverte par-dessus le jeu
+            log("fenêtre de connexion ouverte");
             WebView child = new WebView(MainActivity.this);
             setupWeb(child);
             child.setWebViewClient(new GameClient(true));
@@ -355,6 +372,7 @@ public class MainActivity extends Activity {
             frame.addView(child, new LinearLayout.LayoutParams(-1, 0, 1f));
             popup.setContentView(frame);
             popup.setOnDismissListener(d -> {
+                log("fenêtre de connexion fermée");
                 child.destroy();
                 popup = null;
                 // Le jeu relit la session (connexion faite dans la fenêtre)
@@ -964,6 +982,20 @@ public class MainActivity extends Activity {
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         actions.setPadding(0, dp(16), 0, 0);
+        box.addView(button("Journal de connexion (diagnostic)", false, v -> {
+            TextView j = text(prefs.getString("journal", "(vide)"), 11, C_TEXT, false);
+            j.setTypeface(Typeface.MONOSPACE);
+            j.setTextIsSelectable(true);
+            j.setPadding(dp(18), dp(8), dp(18), dp(8));
+            ScrollView sv = new ScrollView(this);
+            sv.addView(j);
+            new AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert)
+                    .setTitle("Journal de connexion")
+                    .setView(sv)
+                    .setPositiveButton("Fermer", null)
+                    .setNeutralButton("Vider", (d, x) -> prefs.edit().remove("journal").apply())
+                    .show();
+        }));
         Button reset = button("Oublier le menu", false, v -> {
             if (onGame()) web.evaluateJavascript("try{localStorage.removeItem('rbf_nav')}catch(e){}", null);
             toast("Le menu rapide va réapprendre les rubriques");
