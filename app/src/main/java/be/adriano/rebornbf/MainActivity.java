@@ -1,14 +1,21 @@
 package be.adriano.rebornbf;
 
+import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.ColorDrawable;
@@ -20,6 +27,7 @@ import android.os.Message;
 import android.text.InputType;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.HapticFeedbackConstants;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewConfiguration;
@@ -31,6 +39,7 @@ import android.view.WindowManager;
 import android.webkit.CookieManager;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
@@ -38,7 +47,10 @@ import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
+import android.widget.GridLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.ScrollView;
 import android.widget.Switch;
 import android.widget.TextView;
@@ -51,50 +63,62 @@ import androidx.webkit.WebViewFeature;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.JSONTokener;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Reborn BF : le jeu rebornbf.com dans sa propre appli, plein écran, avec un panneau
- * pour activer / couper les bots proprement.
+ * Reborn BF : le jeu rebornbf.com dans sa propre appli, plein écran, avec un menu rapide
+ * pour se déplacer dans le jeu et un panneau pour activer / couper les bots proprement.
  */
 public class MainActivity extends Activity {
 
-    private static final String HOME = "https://rebornbf.com/home";
+    private static final String SITE = "https://rebornbf.com";
+    private static final String HOME = SITE + "/home";
     private static final Set<String> ORIGINS =
             new HashSet<>(Arrays.asList("https://rebornbf.com", "https://*.rebornbf.com"));
 
     // Bots intégrés : id, titre, description, fichier, lancé dès le début du chargement
     private static final String[][] BOTS = {
             {"farm", "Farm quête",
-                    "Relance la même quête par séries de 30 jusqu'à l'objectif. Ouvre une quête puis touche le badge « Farm » en haut à droite pour démarrer.",
+                    "Relance la même quête par séries de 30 jusqu'à l'objectif. Le plus simple : ouvre une quête puis ☰ → « Farmer cette quête ».",
                     "farm.js", "0"},
             {"aventure", "Aventure auto",
-                    "Avance seul dans l'histoire, en AUTO et x2. Attend l'énergie, ne dépense jamais de gemmes. Badge en bas à gauche.",
+                    "Avance seul dans l'histoire, en AUTO et x2. Attend l'énergie, ne dépense jamais de gemmes.",
                     "aventure.js", "1"},
     };
+
+    private static final int C_BG = 0xFF14161D, C_CARD = 0xFF1C1F28, C_TEXT = 0xFFE6E8EE,
+            C_SUB = 0xFF8A8FA0, C_GOLD = 0xFFF0B03C, C_LINE = 0xFF262A36;
 
     private SharedPreferences prefs;
     private WebView web;
     private TextView fab;
+    private ProgressBar progress;
+    private View splash;
+    private View errorView;
     private Dialog panel;
+    private Dialog quick;
     private Dialog popup;
     private ScriptHandler scriptHandler;
     private String injection = "";
     private boolean docStartSupported;
     private boolean dirty;
+    private int notifId = 1;
 
     // ───────────────────────────── Cycle de vie ─────────────────────────────
 
-    @SuppressLint("SetJavaScriptEnabled")
     @Override
     protected void onCreate(Bundle saved) {
         super.onCreate(saved);
@@ -103,16 +127,38 @@ public class MainActivity extends Activity {
 
         FrameLayout root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
+
         web = new WebView(this);
         setupWeb(web);
         root.addView(web, new FrameLayout.LayoutParams(-1, -1));
+
+        progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
+        progress.setMax(100);
+        progress.setProgressTintList(ColorStateList.valueOf(C_GOLD));
+        progress.setProgressBackgroundTintList(ColorStateList.valueOf(Color.TRANSPARENT));
+        progress.setVisibility(View.GONE);
+        root.addView(progress, new FrameLayout.LayoutParams(-1, dp(4), Gravity.TOP));
+
+        errorView = buildErrorView();
+        errorView.setVisibility(View.GONE);
+        root.addView(errorView, new FrameLayout.LayoutParams(-1, -1));
+
+        splash = buildSplash();
+        root.addView(splash, new FrameLayout.LayoutParams(-1, -1));
+
         fab = buildFab();
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(46), dp(46), Gravity.BOTTOM | Gravity.END);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(dp(48), dp(48), Gravity.BOTTOM | Gravity.END);
         lp.setMargins(0, 0, dp(14), dp(70));
         root.addView(fab, lp);
+        fab.setTranslationX(prefs.getFloat("fab_x", 0f));
+        fab.setTranslationY(prefs.getFloat("fab_y", 0f));
         setContentView(root);
 
         docStartSupported = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT);
+        if (WebViewFeature.isFeatureSupported(WebViewFeature.WEB_MESSAGE_LISTENER)) {
+            WebViewCompat.addWebMessageListener(web, "rbfNative", ORIGINS,
+                    (view, message, sourceOrigin, isMainFrame, reply) -> onWebMessage(message.getData()));
+        }
         applyWindowOptions();
         applyScripts();
 
@@ -146,6 +192,7 @@ public class MainActivity extends Activity {
     protected void onDestroy() {
         if (popup != null) popup.dismiss();
         if (panel != null) panel.dismiss();
+        if (quick != null) quick.dismiss();
         web.destroy();
         super.onDestroy();
     }
@@ -159,6 +206,7 @@ public class MainActivity extends Activity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (errorView.getVisibility() == View.VISIBLE) { retry(); return; }
         if (web.canGoBack()) web.goBack();
         else moveTaskToBack(true); // on ne ferme pas le jeu, on le met juste derrière
     }
@@ -189,6 +237,7 @@ public class MainActivity extends Activity {
         cm.setAcceptCookie(true);
         cm.setAcceptThirdPartyCookies(w, true);
         w.setBackgroundColor(Color.BLACK);
+        w.setOverScrollMode(View.OVER_SCROLL_NEVER);
         w.setWebViewClient(new GameClient(false));
         w.setWebChromeClient(new GameChrome());
     }
@@ -197,12 +246,22 @@ public class MainActivity extends Activity {
     private static boolean inApp(Uri u) {
         String h = u.getHost();
         if (h == null) return true;
-        h = h.toLowerCase();
+        h = h.toLowerCase(Locale.ROOT);
         return h.equals("rebornbf.com") || h.endsWith(".rebornbf.com")
                 || h.equals("google.com") || h.endsWith(".google.com") || h.contains(".google.")
                 || h.endsWith(".gstatic.com") || h.endsWith(".googleusercontent.com")
                 || h.endsWith(".googleapis.com") || h.endsWith(".firebaseapp.com")
                 || h.equals("accounts.youtube.com");
+    }
+
+    private static boolean isGame(Uri u) {
+        String h = u.getHost();
+        return h != null && (h.equals("rebornbf.com") || h.endsWith(".rebornbf.com"));
+    }
+
+    private boolean onGame() {
+        String url = web.getUrl();
+        return url != null && isGame(Uri.parse(url));
     }
 
     private class GameClient extends WebViewClient {
@@ -233,8 +292,18 @@ public class MainActivity extends Activity {
 
         @Override
         public void onPageFinished(WebView view, String url) {
-            if (!isPopup && !docStartSupported && url != null && isGame(Uri.parse(url))) {
+            if (isPopup) return;
+            if (!docStartSupported && url != null && isGame(Uri.parse(url))) {
                 view.evaluateJavascript(injection, null);
+            }
+            hideSplash();
+        }
+
+        @Override
+        public void onReceivedError(WebView view, WebResourceRequest req, WebResourceError err) {
+            if (!isPopup && req.isForMainFrame()) {
+                hideSplash();
+                errorView.setVisibility(View.VISIBLE);
             }
         }
 
@@ -246,12 +315,15 @@ public class MainActivity extends Activity {
         }
     }
 
-    private static boolean isGame(Uri u) {
-        String h = u.getHost();
-        return h != null && (h.equals("rebornbf.com") || h.endsWith(".rebornbf.com"));
-    }
-
     private class GameChrome extends WebChromeClient {
+        @Override
+        public void onProgressChanged(WebView view, int p) {
+            if (view != web) return;
+            progress.setProgress(p);
+            progress.setVisibility(p >= 100 ? View.GONE : View.VISIBLE);
+            if (p >= 85) hideSplash();
+        }
+
         @Override
         public boolean onCreateWindow(WebView view, boolean isDialog, boolean userGesture, Message resultMsg) {
             // Fenêtre de connexion (popup Google) ouverte par-dessus le jeu
@@ -288,6 +360,53 @@ public class MainActivity extends Activity {
             startActivity(i);
         } catch (Exception e) {
             toast("Impossible d'ouvrir ce lien");
+        }
+    }
+
+    private void retry() {
+        errorView.setVisibility(View.GONE);
+        if (web.getUrl() == null || "about:blank".equals(web.getUrl())) web.loadUrl(HOME);
+        else web.reload();
+    }
+
+    /** Messages envoyés par les scripts du jeu (vibration, notifications des bots). */
+    private void onWebMessage(String data) {
+        if (data == null) return;
+        if (data.equals("tap")) {
+            if (opt("haptic", true)) {
+                web.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY,
+                        HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
+            }
+        } else if (data.startsWith("notify:")) {
+            notifyUser(data.substring(7));
+        }
+    }
+
+    private void notifyUser(String text) {
+        NotificationManager nm = getSystemService(NotificationManager.class);
+        if (nm == null) return;
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            toast(text);
+            return;
+        }
+        nm.createNotificationChannel(new NotificationChannel("bots", "Bots", NotificationManager.IMPORTANCE_DEFAULT));
+        Intent i = new Intent(this, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pi = PendingIntent.getActivity(this, 0, i, PendingIntent.FLAG_IMMUTABLE);
+        Notification n = new Notification.Builder(this, "bots")
+                .setSmallIcon(R.drawable.ic_notif)
+                .setContentTitle("Reborn BF")
+                .setContentText(text)
+                .setAutoCancel(true)
+                .setContentIntent(pi)
+                .build();
+        nm.notify(notifId++, n);
+    }
+
+    private void askNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= 33
+                && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 7);
         }
     }
 
@@ -331,7 +450,14 @@ public class MainActivity extends Activity {
           .append("window.GM_deleteValue=window.GM_deleteValue||function(k){try{localStorage.removeItem('gm_'+k);}catch(e){}};\n");
 
         if (opt("antipause", true)) sb.append(wrap(asset("antipause.js"), true, "anti-pause"));
+        if (opt("appfeel", true)) sb.append(wrap(asset("appfeel.js"), false, "style appli"));
+        sb.append(wrap(asset("nav.js"), false, "menu rapide"));
         if (opt("hd", false)) sb.append(wrap(asset("hd.js"), false, "filtre HD"));
+        boolean auto = opt("always_auto", false), x2 = opt("always_x2", true);
+        if (auto || x2) {
+            String c = asset("combat.js").replace("__AUTO__", String.valueOf(auto)).replace("__X2__", String.valueOf(x2));
+            sb.append(wrap(c, false, "combat"));
+        }
         for (String[] b : BOTS) {
             if (botOn(b[0])) sb.append(wrap(asset(b[3]), "1".equals(b[4]), b[1]));
         }
@@ -381,10 +507,39 @@ public class MainActivity extends Activity {
                 + "s.target=" + target + ";" + (botOn("farm") ? "" : "s.on=false;")
                 + "localStorage.setItem(k,JSON.stringify(s));"
                 + "}catch(e){}";
-        String url = web.getUrl();
-        if (url != null && isGame(Uri.parse(url))) web.evaluateJavascript(js, v -> web.reload());
+        if (onGame()) web.evaluateJavascript(js, v -> web.reload());
         else web.loadUrl(HOME);
         toast("Réglages appliqués");
+    }
+
+    /** Démarre le farm sur la quête ouverte, sans passer par les réglages. */
+    private void farmQuest(String questId, String slot) {
+        int target = prefs.getInt("farm_target", 300);
+        prefs.edit().putBoolean("bot_farm", true).putBoolean("bot_aventure", false).apply();
+        askNotificationPermission();
+        applyScripts();
+        String js = "try{"
+                + "localStorage.setItem('rbf_adv_actif','0');"
+                + "var k='bfrRepeatBot',s=JSON.parse(localStorage.getItem(k)||'{}');"
+                + "if(s.quest!==" + JSONObject.quote(questId) + "){s.maxRuns=null;s.single=false;}"
+                + "s.quest=" + JSONObject.quote(questId) + ";"
+                + (slot != null ? "s.slot=" + JSONObject.quote(slot) + ";" : "")
+                + "s.on=true;s.target=" + target + ";s.fights=0;s.curRun=0;s.loops=0;s.day=new Date().toDateString();"
+                + "localStorage.setItem(k,JSON.stringify(s));"
+                + "}catch(e){}";
+        web.evaluateJavascript(js, v -> web.loadUrl(SITE + "/start/" + questId));
+        toast("Farm lancé : objectif " + target + " combats");
+    }
+
+    /** Va sur une rubrique du jeu en utilisant sa propre navigation (rapide, sans recharger). */
+    private void goTo(String path) {
+        if (!onGame()) { web.loadUrl(SITE + path); return; }
+        String p = JSONObject.quote(path);
+        web.evaluateJavascript("(function(p){"
+                + "var a=[].slice.call(document.querySelectorAll('a[href]')).find(function(x){return (x.getAttribute('href')||'').split(/[?#]/)[0]===p;});"
+                + "if(a){a.click();return;}"
+                + "try{if(window.next&&window.next.router&&window.next.router.push){window.next.router.push(p);return;}}catch(e){}"
+                + "location.assign(p);})(" + p + ")", null);
     }
 
     // ───────────────────────────── Fenêtre ─────────────────────────────
@@ -424,13 +579,55 @@ public class MainActivity extends Activity {
         }
     }
 
+    // ───────────────────────────── Démarrage / erreur ─────────────────────────────
+
+    private View buildSplash() {
+        LinearLayout v = new LinearLayout(this);
+        v.setOrientation(LinearLayout.VERTICAL);
+        v.setGravity(Gravity.CENTER);
+        v.setBackgroundColor(0xFF0B0A14);
+        v.setClickable(true);
+        ImageView icon = new ImageView(this);
+        icon.setImageResource(R.mipmap.ic_launcher);
+        v.addView(icon, new LinearLayout.LayoutParams(dp(96), dp(96)));
+        TextView t = text("Reborn BF", 22, C_TEXT, true);
+        t.setPadding(0, dp(16), 0, dp(4));
+        v.addView(t);
+        v.addView(text("Chargement du jeu…", 13, C_SUB, false));
+        return v;
+    }
+
+    private void hideSplash() {
+        if (splash == null || splash.getVisibility() != View.VISIBLE) return;
+        splash.animate().alpha(0f).setDuration(250).withEndAction(() -> splash.setVisibility(View.GONE)).start();
+    }
+
+    private View buildErrorView() {
+        LinearLayout v = new LinearLayout(this);
+        v.setOrientation(LinearLayout.VERTICAL);
+        v.setGravity(Gravity.CENTER);
+        v.setBackgroundColor(0xFF0B0A14);
+        v.setPadding(dp(32), 0, dp(32), 0);
+        v.setClickable(true);
+        TextView t = text("Pas de connexion au jeu", 20, C_TEXT, true);
+        t.setGravity(Gravity.CENTER);
+        v.addView(t);
+        TextView s = text("Vérifie ton Wi-Fi ou tes données mobiles, puis réessaie.", 14, C_SUB, false);
+        s.setGravity(Gravity.CENTER);
+        s.setPadding(0, dp(8), 0, dp(20));
+        v.addView(s);
+        Button b = button("Réessayer", true, x -> retry());
+        v.addView(b, new LinearLayout.LayoutParams(dp(200), dp(48)));
+        return v;
+    }
+
     // ───────────────────────────── Bouton flottant ─────────────────────────────
 
     @SuppressLint("ClickableViewAccessibility")
     private TextView buildFab() {
         TextView b = new TextView(this);
         b.setText("☰");
-        b.setTextColor(0xFFF0B03C);
+        b.setTextColor(C_GOLD);
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20);
         b.setGravity(Gravity.CENTER);
         GradientDrawable bg = new GradientDrawable();
@@ -438,7 +635,7 @@ public class MainActivity extends Activity {
         bg.setColor(0xE60E1016);
         bg.setStroke(dp(1), 0x66F0B03C);
         b.setBackground(bg);
-        b.setAlpha(0.8f);
+        b.setAlpha(0.65f);
         b.setElevation(dp(6));
         final int slop = ViewConfiguration.get(this).getScaledTouchSlop();
         b.setOnTouchListener(new View.OnTouchListener() {
@@ -465,11 +662,17 @@ public class MainActivity extends Activity {
                         }
                         return true;
                     case MotionEvent.ACTION_UP:
-                        v.setAlpha(0.8f);
-                        if (!dragging) openPanel();
+                        v.setAlpha(0.65f);
+                        if (dragging) {
+                            prefs.edit().putFloat("fab_x", v.getTranslationX()).putFloat("fab_y", v.getTranslationY()).apply();
+                        } else {
+                            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+                            if (e.getEventTime() - e.getDownTime() > 450) openPanel(); // appui long : réglages
+                            else openQuick();
+                        }
                         return true;
                     case MotionEvent.ACTION_CANCEL:
-                        v.setAlpha(0.8f);
+                        v.setAlpha(0.65f);
                         return true;
                 }
                 return false;
@@ -478,10 +681,167 @@ public class MainActivity extends Activity {
         return b;
     }
 
-    // ───────────────────────────── Panneau des bots ─────────────────────────────
+    // ───────────────────────────── Menu rapide ─────────────────────────────
 
-    private static final int C_BG = 0xFF14161D, C_CARD = 0xFF1C1F28, C_TEXT = 0xFFE6E8EE,
-            C_SUB = 0xFF8A8FA0, C_GOLD = 0xFFF0B03C, C_LINE = 0xFF262A36;
+    private void openQuick() {
+        if (quick != null && quick.isShowing()) return;
+        String js = "(function(){var n={},q=null,s=null;"
+                + "try{n=JSON.parse(localStorage.getItem('rbf_nav')||'{}')}catch(e){}"
+                + "try{var b=JSON.parse(localStorage.getItem('bfrRepeatBot')||'{}');q=b.quest||null;}catch(e){}"
+                + "try{s=new URLSearchParams(location.search).get('slot')}catch(e){}"
+                + "return JSON.stringify({nav:n,path:location.pathname,quest:q,slot:s});})()";
+        if (!onGame()) { showQuick(new JSONObject()); return; }
+        web.evaluateJavascript(js, res -> {
+            JSONObject info = new JSONObject();
+            try {
+                Object o = new JSONTokener(res).nextValue();
+                if (o instanceof String) info = new JSONObject((String) o);
+            } catch (Exception ignored) { }
+            showQuick(info);
+        });
+    }
+
+    private static String iconFor(String path, String label) {
+        String k = (path + " " + label).toLowerCase(Locale.ROOT);
+        if (k.contains("arena") || k.contains("arène") || k.contains("pvp") || k.contains("colis")) return "⚔️";
+        if (k.contains("summon") || k.contains("invoc") || k.contains("gacha")) return "✨";
+        if (k.contains("unit") || k.contains("unité") || k.contains("squad") || k.contains("équipe") || k.contains("team")) return "👥";
+        if (k.contains("item") || k.contains("objet") || k.contains("inventa") || k.contains("sac")) return "🎒";
+        if (k.contains("shop") || k.contains("boutique") || k.contains("store") || k.contains("market")) return "🛒";
+        if (k.contains("friend") || k.contains("ami") || k.contains("social")) return "🤝";
+        if (k.contains("account") || k.contains("compte") || k.contains("profil") || k.contains("summoner")) return "👤";
+        if (k.contains("gift") || k.contains("cadeau") || k.contains("present") || k.contains("mail")) return "🎁";
+        if (k.contains("mission") || k.contains("achiev") || k.contains("quotid") || k.contains("daily")) return "📜";
+        if (k.contains("vortex") || k.contains("dungeon") || k.contains("donjon") || k.contains("event")) return "🌀";
+        if (k.contains("fusion") || k.contains("evol") || k.contains("craft") || k.contains("forge")) return "🔨";
+        if (k.contains("quest") || k.contains("quête") || k.contains("aventure")) return "🗺️";
+        if (k.contains("rank") || k.contains("classement") || k.contains("leader")) return "🏆";
+        if (k.contains("setting") || k.contains("option") || k.contains("param")) return "⚙️";
+        return "🔹";
+    }
+
+    private void showQuick(JSONObject info) {
+        quick = new Dialog(this);
+        quick.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(dp(14), dp(10), dp(14), dp(18));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(C_BG);
+        float r = dp(22);
+        bg.setCornerRadii(new float[]{r, r, r, r, 0, 0, 0, 0});
+        bg.setStroke(dp(1), C_LINE);
+        box.setBackground(bg);
+
+        View grip = new View(this);
+        GradientDrawable g = new GradientDrawable();
+        g.setColor(0xFF3A3F4E);
+        g.setCornerRadius(dp(3));
+        grip.setBackground(g);
+        LinearLayout.LayoutParams glp = new LinearLayout.LayoutParams(dp(40), dp(5));
+        glp.gravity = Gravity.CENTER_HORIZONTAL;
+        glp.bottomMargin = dp(12);
+        box.addView(grip, glp);
+
+        String path = info.optString("path", "");
+        String quest = info.isNull("quest") ? null : info.optString("quest", null);
+        String slot = info.isNull("slot") ? null : info.optString("slot", null);
+
+        // Action principale selon l'écran
+        Matcher qm = Pattern.compile("^/start/(\\d+)").matcher(path);
+        if (qm.find()) {
+            final String id = qm.group(1);
+            box.addView(button("🔁  Farmer cette quête (" + prefs.getInt("farm_target", 300) + " combats)", true, v -> {
+                quick.dismiss();
+                farmQuest(id, slot);
+            }));
+        } else if (quest != null && !quest.isEmpty()) {
+            final String id = quest;
+            box.addView(button("▶  Reprendre ma dernière quête", true, v -> {
+                quick.dismiss();
+                web.loadUrl(SITE + "/start/" + id);
+            }));
+        }
+
+        GridLayout grid = new GridLayout(this);
+        grid.setColumnCount(4);
+        grid.setPadding(0, dp(8), 0, 0);
+        box.addView(grid, new LinearLayout.LayoutParams(-1, -2));
+
+        tile(grid, "⬅️", "Retour", () -> { if (web.canGoBack()) web.goBack(); });
+        tile(grid, "🏠", "Accueil", () -> goTo("/home"));
+        tile(grid, "🗺️", "Quêtes", () -> goTo("/quests"));
+
+        // Rubriques apprises dans le menu du jeu, les plus utilisées d'abord
+        List<String[]> nav = new ArrayList<>();
+        JSONObject n = info.optJSONObject("nav");
+        if (n != null) {
+            Iterator<String> it = n.keys();
+            while (it.hasNext()) {
+                String p = it.next();
+                JSONObject o = n.optJSONObject(p);
+                if (o == null || p.equals("/home") || p.equals("/quests")) continue;
+                nav.add(new String[]{p, o.optString("l", p), String.valueOf(o.optInt("n", 0))});
+            }
+        }
+        Collections.sort(nav, (a, b) -> Integer.parseInt(b[2]) - Integer.parseInt(a[2]));
+        for (int i = 0; i < nav.size() && i < 9; i++) {
+            final String p = nav.get(i)[0];
+            tile(grid, iconFor(p, nav.get(i)[1]), nav.get(i)[1], () -> goTo(p));
+        }
+        tile(grid, "🔄", "Recharger", () -> web.reload());
+        tile(grid, "🤖", "Bots & réglages", this::openPanel);
+
+        if (nav.isEmpty()) {
+            TextView hint = text("Les autres rubriques du jeu (arène, unités, invocation…) apparaîtront ici dès que tu auras ouvert le menu du jeu une fois.", 12, C_SUB, false);
+            hint.setPadding(dp(4), dp(10), dp(4), 0);
+            box.addView(hint);
+        }
+
+        quick.setContentView(box);
+        Window w = quick.getWindow();
+        if (w != null) {
+            w.setBackgroundDrawable(new ColorDrawable(Color.TRANSPARENT));
+            w.setGravity(Gravity.BOTTOM);
+            w.setLayout(Math.min(getResources().getDisplayMetrics().widthPixels, dp(520)), ViewGroup.LayoutParams.WRAP_CONTENT);
+            w.setDimAmount(0.45f);
+            w.getAttributes().windowAnimations = android.R.style.Animation_InputMethod;
+        }
+        quick.setOnDismissListener(d -> applyWindowOptions());
+        quick.show();
+    }
+
+    private void tile(GridLayout grid, String icon, String label, Runnable action) {
+        LinearLayout t = new LinearLayout(this);
+        t.setOrientation(LinearLayout.VERTICAL);
+        t.setGravity(Gravity.CENTER);
+        t.setPadding(dp(4), dp(10), dp(4), dp(10));
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(C_CARD);
+        bg.setCornerRadius(dp(14));
+        t.setBackground(bg);
+        TextView i = text(icon, 22, C_TEXT, false);
+        i.setGravity(Gravity.CENTER);
+        t.addView(i);
+        TextView l = text(label, 11, C_TEXT, false);
+        l.setGravity(Gravity.CENTER);
+        l.setMaxLines(2);
+        l.setPadding(0, dp(4), 0, 0);
+        t.addView(l);
+        t.setOnClickListener(v -> {
+            v.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY);
+            if (quick != null) quick.dismiss();
+            action.run();
+        });
+        GridLayout.LayoutParams lp = new GridLayout.LayoutParams(
+                GridLayout.spec(GridLayout.UNDEFINED), GridLayout.spec(GridLayout.UNDEFINED, 1f));
+        lp.width = 0;
+        lp.height = dp(78);
+        lp.setMargins(dp(4), dp(4), dp(4), dp(4));
+        grid.addView(t, lp);
+    }
+
+    // ───────────────────────────── Panneau des bots ─────────────────────────────
 
     private void openPanel() {
         if (panel != null && panel.isShowing()) return;
@@ -515,8 +875,7 @@ public class MainActivity extends Activity {
 
     private void fillPanel(LinearLayout box) {
         box.removeAllViews();
-        TextView title = text("Reborn BF", 20, C_TEXT, true);
-        box.addView(title);
+        box.addView(text("Bots & réglages", 20, C_TEXT, true));
         box.addView(text("Les changements s'appliquent quand tu fermes ce panneau (le jeu se recharge).", 12, C_SUB, false));
 
         section(box, "BOTS");
@@ -527,6 +886,7 @@ public class MainActivity extends Activity {
             botSwitches[i] = switchRow(box, b[1], b[2], botOn(b[0]), on -> {
                 prefs.edit().putBoolean("bot_" + b[0], on).apply();
                 dirty = true;
+                if (on) askNotificationPermission();
                 // Un seul bot de navigation à la fois (ils se gêneraient)
                 if (on) for (int j = 0; j < BOTS.length; j++) {
                     if (j != idx && botSwitches[j] != null && botSwitches[j].isChecked()) botSwitches[j].setChecked(false);
@@ -537,6 +897,10 @@ public class MainActivity extends Activity {
             prefs.edit().putInt("farm_target", v).apply();
             dirty = true;
         });
+
+        section(box, "COMBAT");
+        optionRow(box, "always_x2", "Toujours en x2", "Chaque combat passe en vitesse x2 tout seul.", true);
+        optionRow(box, "always_auto", "Toujours en AUTO", "Chaque combat démarre en AUTO.", false);
 
         section(box, "MES SCRIPTS");
         JSONArray custom = customScripts();
@@ -572,7 +936,9 @@ public class MainActivity extends Activity {
         }
         box.addView(button("+ Ajouter un script", false, v -> addScriptDialog(box)));
 
-        section(box, "OPTIONS");
+        section(box, "CONFORT");
+        optionRow(box, "appfeel", "Style appli", "Boutons qui réagissent, transitions douces, plus de sélection de texte par erreur.", true);
+        optionRow(box, "haptic", "Vibrations", "Petite vibration quand tu touches un bouton.", true);
         optionRow(box, "antipause", "Anti-pause", "Le jeu continue même si l'appli passe derrière ou si une notification arrive.", true);
         optionRow(box, "screen_on", "Écran toujours allumé", "L'écran ne se met pas en veille pendant que le jeu est ouvert.", true);
         optionRow(box, "fullscreen", "Plein écran", "Cache les barres du téléphone.", true);
@@ -581,19 +947,14 @@ public class MainActivity extends Activity {
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
         actions.setPadding(0, dp(16), 0, 0);
-        Button home = button("Accueil", false, v -> {
-            web.loadUrl(HOME);
-            panel.dismiss();
-        });
-        Button reload = button("Recharger", false, v -> {
-            dirty = true;
-            panel.dismiss();
+        Button reset = button("Oublier le menu", false, v -> {
+            if (onGame()) web.evaluateJavascript("try{localStorage.removeItem('rbf_nav')}catch(e){}", null);
+            toast("Le menu rapide va réapprendre les rubriques");
         });
         Button close = button("Fermer", true, v -> panel.dismiss());
         LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, dp(44), 1f);
         p.setMargins(dp(3), 0, dp(3), 0);
-        actions.addView(home, p);
-        actions.addView(reload, new LinearLayout.LayoutParams(p));
+        actions.addView(reset, p);
         actions.addView(close, new LinearLayout.LayoutParams(p));
         box.addView(actions);
     }
@@ -683,6 +1044,8 @@ public class MainActivity extends Activity {
         Switch sw = new Switch(this);
         sw.setChecked(checked);
         sw.setPadding(dp(10), 0, 0, 0);
+        sw.setThumbTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{C_GOLD, 0xFFB0B4C0}));
+        sw.setTrackTintList(new ColorStateList(new int[][]{{android.R.attr.state_checked}, {}}, new int[]{0x88F0B03C, 0xFF3A3F4E}));
         sw.setOnCheckedChangeListener((b, on) -> cb.set(on));
         row.addView(sw);
         row.setOnClickListener(v -> sw.toggle());
@@ -751,14 +1114,15 @@ public class MainActivity extends Activity {
         b.setAllCaps(false);
         b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
         b.setTextColor(primary ? 0xFF14161D : C_TEXT);
+        if (primary) b.setTypeface(Typeface.DEFAULT_BOLD);
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(primary ? C_GOLD : C_CARD);
-        bg.setCornerRadius(dp(10));
+        bg.setCornerRadius(dp(12));
         bg.setStroke(dp(1), primary ? C_GOLD : C_LINE);
         b.setBackground(bg);
         b.setStateListAnimator(null);
         b.setOnClickListener(l);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(44));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(-1, dp(46));
         lp.setMargins(0, dp(6), 0, 0);
         b.setLayoutParams(lp);
         return b;

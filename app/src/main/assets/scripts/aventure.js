@@ -112,7 +112,10 @@
     watch.reset();
     render(why);
   }
-  const stop = (why) => setOn(false, why);
+  const stop = (why) => {
+    setOn(false, why);
+    try { if (window.rbfNative) window.rbfNative.postMessage('notify:Aventure arrêtée : ' + why); } catch (e) { /* rien */ }
+  };
 
   // Clique après une courte pause, en vérifiant que l'élément est toujours là.
   async function click(el, status) {

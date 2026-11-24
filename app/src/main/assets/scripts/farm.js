@@ -77,6 +77,7 @@
   draw();
 
   const setStatus = (s) => { status = s; draw(); };
+  const notify = (t) => { try { if (window.rbfNative) window.rbfNative.postMessage('notify:' + t); } catch (e) { /* rien */ } };
   const goQuest = () => { if (st.quest) location.href = '/start/' + st.quest; };
   const alertText = () => ($$('[role="alert"]').map((a) => a.textContent).join(' ') || '').trim();
   const runCount = () => parseInt((($('output[class*="runCount"]') || {}).textContent || '').replace(/\D/g, ''), 10) || 0;
@@ -123,7 +124,7 @@
 
       // Objectif atteint → on arrête
       if (remaining() <= 0 && !path.startsWith('/battle')) {
-        st.on = false; save(st); setStatus('terminé ✔'); return;
+        st.on = false; save(st); setStatus('terminé ✔'); notify('Farm terminé : ' + st.fights + ' combats'); return;
       }
 
       // 1) Liste des renforts : on prend le PREMIER allié de la liste (ex. Semira)
@@ -141,7 +142,7 @@
       else if (/^\/start\/\d+\/begin/.test(path)) {
         if (/no clears left/i.test(alertText())) {
           st.on = false; save(st);
-          setStatus('plus de clears aujourd\'hui');
+          setStatus('plus de clears aujourd\'hui'); notify('Farm arrêté : plus de passages aujourd\'hui sur ce donjon');
           return;
         }
 
@@ -174,7 +175,7 @@
             save(st);
           } else if (/no clears left/i.test(msg)) {
             st.on = false; save(st);
-            setStatus('plus de clears aujourd\'hui');
+            setStatus('plus de clears aujourd\'hui'); notify('Farm arrêté : plus de passages aujourd\'hui sur ce donjon');
           }
         }
       }
@@ -198,7 +199,7 @@
           const actions = $('[class*="repeatActions"]');
           const again = actions && $$('a,button', actions).find((b) => visible(b) &&
             /again|encore|rejouer|recommencer|répéter|repeat|retry/i.test(b.textContent + ' ' + (b.getAttribute('aria-label') || '')));
-          if (remaining() <= 0) { st.on = false; save(st); setStatus('terminé ✔'); }
+          if (remaining() <= 0) { st.on = false; save(st); setStatus('terminé ✔'); notify('Farm terminé : ' + st.fights + ' combats'); }
           // « Repeat again » relance 30 : seulement s'il en reste au moins 30 et pas de limite du jour
           else if (again && !st.maxRuns && !st.single && remaining() >= 30) { st.loops++; save(st); again.click(); }
           else if (next) { next.click(); }
