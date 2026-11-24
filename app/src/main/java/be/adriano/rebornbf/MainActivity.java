@@ -276,15 +276,7 @@ public class MainActivity extends Activity {
             if (scheme.equals("http") || scheme.equals("https")) {
                 // Redirections et navigations du jeu (connexion…) : on reste dans l'appli.
                 // Un lien touché vers un autre site s'ouvre dans le navigateur.
-                if (inApp(u) || req.isRedirect() || !req.hasGesture()) {
-                    // Popup de connexion revenue sur le jeu → on ramène tout dans la fenêtre principale
-                    if (isPopup && isGame(u) && popup != null) {
-                        web.loadUrl(u.toString());
-                        popup.dismiss();
-                        return true;
-                    }
-                    return false;
-                }
+                if (inApp(u) || req.isRedirect() || !req.hasGesture() || isPopup) return false;
             }
             openExternal(u);
             return true;
@@ -292,7 +284,16 @@ public class MainActivity extends Activity {
 
         @Override
         public void onPageFinished(WebView view, String url) {
-            if (isPopup) return;
+            if (isPopup) {
+                Uri u = url == null ? null : Uri.parse(url);
+                String p = u == null || u.getPath() == null ? "" : u.getPath();
+                // La page de retour de connexion (/__/auth/…, /api/auth/…, /auth/…) doit finir son travail
+                // seule. Si la fenêtre atterrit sur une vraie page du jeu, la connexion est faite.
+                if (u != null && isGame(u) && !p.contains("auth") && !p.contains("callback")) {
+                    view.postDelayed(() -> { if (popup != null) popup.dismiss(); }, 2500);
+                }
+                return;
+            }
             if (!docStartSupported && url != null && isGame(Uri.parse(url))) {
                 view.evaluateJavascript(injection, null);
             }
@@ -338,10 +339,26 @@ public class MainActivity extends Activity {
             });
             if (popup != null) popup.dismiss();
             popup = new Dialog(MainActivity.this, android.R.style.Theme_Black_NoTitleBar_Fullscreen);
-            popup.setContentView(child);
+            LinearLayout frame = new LinearLayout(MainActivity.this);
+            frame.setOrientation(LinearLayout.VERTICAL);
+            frame.setBackgroundColor(C_BG);
+            LinearLayout bar = new LinearLayout(MainActivity.this);
+            bar.setGravity(Gravity.CENTER_VERTICAL);
+            bar.setPadding(dp(16), 0, dp(4), 0);
+            TextView title = text("Connexion", 15, C_TEXT, true);
+            bar.addView(title, new LinearLayout.LayoutParams(0, -2, 1f));
+            TextView close = text("✕", 20, C_SUB, false);
+            close.setGravity(Gravity.CENTER);
+            close.setOnClickListener(v -> { if (popup != null) popup.dismiss(); });
+            bar.addView(close, new LinearLayout.LayoutParams(dp(48), dp(48)));
+            frame.addView(bar, new LinearLayout.LayoutParams(-1, dp(48)));
+            frame.addView(child, new LinearLayout.LayoutParams(-1, 0, 1f));
+            popup.setContentView(frame);
             popup.setOnDismissListener(d -> {
                 child.destroy();
                 popup = null;
+                // Le jeu relit la session (connexion faite dans la fenêtre)
+                web.postDelayed(() -> web.reload(), 2000);
             });
             popup.show();
             WebView.WebViewTransport t = (WebView.WebViewTransport) resultMsg.obj;
