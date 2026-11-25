@@ -144,6 +144,68 @@
     });
   }
 
+  // ───────── 1 bis. Écran « Évoluer une unité » du jeu : où farmer les matériaux manquants ─────────
+  function readEvoMaterials() {
+    // Chaque matériau du jeu = une vignette (image d'unité ou d'objet) avec « Possédé N » en dessous
+    const out = [];
+    const seen = new Set();
+    $$('body *').forEach((el) => {
+      if (el.children.length > 2) return;
+      const m = (el.textContent || '').trim().match(/^Poss[ée]d[ée]e?s?\s*:?\s*(\d+)$/i);
+      if (!m) return;
+      let box = el.parentElement, img = null;
+      for (let k = 0; k < 4 && box && !img; k++) { img = box.querySelector('img[src*="/units/"], img[src*="/item/"]'); if (!img) box = box.parentElement; }
+      if (!img || seen.has(img)) return;
+      seen.add(img);
+      out.push({ src: img.currentSrc || img.src, owned: +m[1] });
+    });
+    return out;
+  }
+  async function openEvoGuide() {
+    show(`<div class="card"><div class="head"><h2>Chargement…</h2></div><div class="row2"><div class="gbtn ol" data-a="close">Fermer</div></div></div>`);
+    const mats = readEvoMaterials();
+    let rows = [];
+    try {
+      const [I, art] = await Promise.all([window.rbfData.index(), window.rbfData.get('art')]);
+      rows = await Promise.all(mats.map(async (m) => {
+        let id = null;
+        const u = m.src.match(/\/units\/(\d+)\//);
+        if (u && I.formByArchive[u[1]]) id = I.formByArchive[u[1]].id;
+        if (!id) {
+          const file = m.src.split('/').pop();
+          const it = (art.items || []).find((x) => x.icon && x.icon.path.split('/').pop() === file);
+          if (it) id = it.id;
+        }
+        const src = id ? await window.rbfData.whereToGet(id) : [];
+        const best = src.find((x) => x.kind === 'drop' || x.kind === 'capture') || src[0];
+        return { m, id, name: id ? window.rbfData.nameOf(I, id) : 'Matériau', best };
+      }));
+    } catch (e) { rows = []; }
+    if (!rows.length) {
+      show(`<div class="card"><div class="head"><h2>Matériaux introuvables</h2><p>Je n'ai pas réussi à lire les matériaux sur cet écran.</p></div><div class="row2"><div class="gbtn ol" data-a="close">Fermer</div></div></div>`);
+      return;
+    }
+    rows.sort((a, b) => (a.m.owned ? 1 : 0) - (b.m.owned ? 1 : 0));
+    const line = (r) => {
+      const b = r.best;
+      if (!b) return '<p class="muted">Aucune source connue</p>';
+      if (b.kind === 'drop' || b.kind === 'capture') {
+        const i = b.info || {};
+        return `<p class="muted">${b.kind === 'capture' ? '🎯 Capture' : '📦 Drop'} ${pct(b.chance)} · <b style="color:#ffd24a">${esc(i.name)}</b> · ${esc(i.dungeon)} · ⚡ ${i.energy || 0}</p>`;
+      }
+      const k = { summon: 'Invocation', 'merit-exchange': 'Boutique du mérite', 'level-up': 'Niveau joueur', craft: 'Fabrication', 'first-clear': 'Première victoire', evolution: 'Évolution' }[b.kind] || b.kind;
+      return `<p class="muted">${esc(k)}${b.info ? ' · ' + esc(b.info.name) : ''}</p>`;
+    };
+    show(`<div class="card"><div class="head"><h2>Où farmer les matériaux</h2><p>Ceux qui te manquent sont en premier.</p></div>
+      <div class="body">${rows.map((r) => `<div class="wave" style="display:flex;align-items:center;gap:10px">
+        <img src="${esc(r.m.src)}" alt="" style="width:44px;height:44px;object-fit:contain;flex:none">
+        <div style="flex:1;min-width:0"><div class="en" style="padding:0"><span class="n" style="font-weight:600">${esc(r.name)}</span>
+          <span class="hp" style="color:${r.m.owned ? '#7ddc8f' : '#ff8a7a'}">Possédé ${r.m.owned}</span></div>${line(r)}</div>
+        ${r.best && (r.best.kind === 'drop' || r.best.kind === 'capture') ? `<div class="gbtn ol" data-a="farm" data-m="${r.best.mission}" style="flex:none;width:86px;height:34px;font-size:13px;margin:0">Farmer</div>` : ''}
+      </div>`).join('')}</div>
+      <div class="row2"><div class="gbtn ol" data-a="close">Fermer</div></div></div>`);
+  }
+
   // ───────── 5. Taux des invocations ─────────
   let bannerTab = 0;
   async function openRates() {
@@ -177,6 +239,7 @@
     const m = p.match(/^\/start\/(\d+)/);
     if (m) showTab('📜 Infos quête', () => openMission(m[1]));
     else if (p.startsWith('/summon')) showTab('📊 Taux', openRates);
+    else if (p.startsWith('/units/info/evolve')) showTab('📦 Où farmer', openEvoGuide);
     else hideTab();
   }
   ['pushState', 'replaceState'].forEach((k) => {
