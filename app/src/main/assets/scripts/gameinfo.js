@@ -163,13 +163,27 @@
   }
   async function openEvoGuide() {
     show(`<div class="card"><div class="head"><h2>Chargement…</h2></div><div class="row2"><div class="gbtn ol" data-a="close">Fermer</div></div></div>`);
-    const mats = readEvoMaterials();
+    let mats = readEvoMaterials();
     let rows = [];
     try {
       const [I, art] = await Promise.all([window.rbfData.index(), window.rbfData.get('art')]);
+      // Sans lire l'écran : l'unité affichée (son image) suffit, l'API donne la liste des matériaux
+      if (!mats.length) {
+        const ids = [...new Set($$('img[src*="/units/"]').map((i) => ((i.currentSrc || i.src).match(/\/units\/(\d+)\//) || [])[1]).filter(Boolean))];
+        const forms = ids.map((x) => I.formByArchive[x]).filter((f) => f && f.evolution);
+        const score = (f) => (f.evolution.units || []).filter((u) => ids.some((x) => I.formByArchive[x] && I.formByArchive[x].unit === u.unit)).length;
+        forms.sort((a, b) => score(b) - score(a));
+        const f = forms[0];
+        if (f) {
+          const artOf = (id) => { const a = (art.units || []).find((x) => x.form === id || x.unit === id) || (art.items || []).find((x) => x.id === id); const pth = a && (a.thumbnail || a.icon); return pth ? A + pth.path.replace(/^original\//, '') : ''; };
+          mats = (f.evolution.units || []).map((u) => ({ id: (I.unit[u.unit] && I.unit[u.unit].forms[0].id) || u.unit, count: u.count }))
+            .concat((f.evolution.items || []).map((x) => ({ id: x.item, count: x.count })))
+            .map((x) => ({ src: artOf(x.id), owned: null, id: x.id, count: x.count }));
+        }
+      }
       rows = await Promise.all(mats.map(async (m) => {
-        let id = null;
-        const u = m.src.match(/\/units\/(\d+)\//);
+        let id = m.id || null;
+        const u = !id && m.src.match(/\/units\/(\d+)\//);
         if (u && I.formByArchive[u[1]]) id = I.formByArchive[u[1]].id;
         if (!id) {
           const file = m.src.split('/').pop();
@@ -200,7 +214,7 @@
       <div class="body">${rows.map((r) => `<div class="wave" style="display:flex;align-items:center;gap:10px">
         <img src="${esc(r.m.src)}" alt="" style="width:44px;height:44px;object-fit:contain;flex:none">
         <div style="flex:1;min-width:0"><div class="en" style="padding:0"><span class="n" style="font-weight:600">${esc(r.name)}</span>
-          <span class="hp" style="color:${r.m.owned ? '#7ddc8f' : '#ff8a7a'}">Possédé ${r.m.owned}</span></div>${line(r)}</div>
+          <span class="hp" style="color:${r.m.owned ? '#7ddc8f' : '#ff8a7a'}">${r.m.owned === null ? (r.m.count || 1) + '× requis' : 'Possédé ' + r.m.owned}</span></div>${line(r)}</div>
         ${r.best && (r.best.kind === 'drop' || r.best.kind === 'capture') ? `<div class="gbtn ol" data-a="farm" data-m="${r.best.mission}" style="flex:none;width:86px;height:34px;font-size:13px;margin:0">Farmer</div>` : ''}
       </div>`).join('')}</div>
       <div class="row2"><div class="gbtn ol" data-a="close">Fermer</div></div></div>`);
