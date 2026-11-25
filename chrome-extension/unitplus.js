@@ -200,7 +200,7 @@ try{
     });
     const helper = helperBtn();
     const toggles = togglesBox();
-    if (!helper || !toggles) { if (old) old.style.display = 'none'; return; }
+    if (!helper || !toggles) { if (old) old.remove(); return; }
     let box = old;
     if (!box || box.dataset.unit !== currentUnitId()) {
       if (box) box.remove();
@@ -241,13 +241,52 @@ try{
     box.style.top = Math.round(t.top) + 'px';
   }
 
-  window.addEventListener('resize', () => { const b = $('#rbf-unit-actions'); const t = togglesBox(); if (b && t) place(b, t); });
-  setInterval(() => {
-    if (!location.pathname.startsWith('/units')) { const b = $('#rbf-unit-actions'); if (b) b.remove(); return; }
-    learnUnitMenu();
+  // ───────── Réactivité : pas d'attente à l'arrivée, rien qui traîne au départ ─────────
+  // Les boutons suivent les changements de la page (MutationObserver) et les changements d'adresse
+  // (navigation interne du jeu), au lieu d'un contrôle toutes les 0,6 s.
+
+  const removeBox = () => { const b = $('#rbf-unit-actions'); if (b) b.remove(); };
+  let raf = 0;
+  function update() {
+    raf = 0;
+    if (location.pathname !== '/units/info') { removeBox(); return; }
     addActions();
-    followPick();
-  }, 600);
+  }
+  const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
+
+  function onNavigate() {
+    const b = $('#rbf-unit-actions');
+    if (b && (location.pathname !== '/units/info' || b.dataset.unit !== currentUnitId())) b.remove(); // départ : disparaît tout de suite
+    schedule();
+  }
+  ['pushState', 'replaceState'].forEach((k) => {
+    const orig = history[k];
+    history[k] = function (...args) { const r = orig.apply(this, args); onNavigate(); return r; };
+  });
+  window.addEventListener('popstate', onNavigate);
+
+  new MutationObserver(() => {
+    if (location.pathname.startsWith('/units') || $('#rbf-unit-actions')) schedule();
+  }).observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-pressed', 'aria-label'] });
+
+  // Position recalculée à chaque image tant que la fiche est affichée (suit les animations du jeu)
+  function follow() {
+    const b = $('#rbf-unit-actions');
+    const t = togglesBox();
+    if (b) {
+      if (!t || !document.documentElement.contains(t)) b.remove();
+      else place(b, t);
+    }
+    requestAnimationFrame(follow);
+  }
+  requestAnimationFrame(follow);
+
+  // Filet de sécurité (menu Unit, cas rares)
+  setInterval(() => {
+    if (location.pathname.startsWith('/units')) learnUnitMenu();
+    schedule();
+  }, 1500);
+  schedule();
 })();
 
 }catch(e){console.error("[RBF] unitplus",e)}
