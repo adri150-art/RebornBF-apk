@@ -90,6 +90,47 @@ try{
   }, 500);
 })();
 
+// « Back » du jeu : revient vraiment à la page précédente (le jeu renvoie sinon vers une page fixe,
+// par exemple la liste des unités). On garde la liste des pages visitées dans l'onglet.
+(function () {
+  'use strict';
+  if (window.__rbfBack) return;
+  window.__rbfBack = true;
+  const KEY = 'rbf_hist';
+  const here = () => location.pathname + location.search;
+  const load = () => { try { return JSON.parse(sessionStorage.getItem(KEY)) || []; } catch (e) { return []; } };
+  const save = (h) => { try { sessionStorage.setItem(KEY, JSON.stringify(h.slice(-40))); } catch (e) { /* rien */ } };
+
+  function record() {
+    const h = load();
+    const cur = here();
+    if (h[h.length - 1] === cur) return;
+    if (h[h.length - 2] === cur) h.pop(); // retour arrière (bouton Retour, Alt+←, geste)
+    else h.push(cur);
+    save(h);
+  }
+  ['pushState', 'replaceState'].forEach((k) => {
+    const orig = history[k];
+    history[k] = function (...args) {
+      const r = orig.apply(this, args);
+      if (k === 'replaceState') { const h = load(); if (h.length) { h[h.length - 1] = here(); save(h); } } else record();
+      return r;
+    };
+  });
+  window.addEventListener('popstate', record);
+  record();
+
+  document.addEventListener('click', (e) => {
+    const back = e.target.closest && e.target.closest('a[class*="kit-module__"][class*="__back"], button[class*="kit-module__"][class*="__back"]');
+    if (!back || e.button !== 0 || e.ctrlKey || e.metaKey) return;
+    const h = load();
+    if (h.length < 2) return; // pas de page précédente connue : comportement normal du jeu
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    history.back();
+  }, true);
+})();
+
 }catch(e){console.error("[RBF] nav",e)}
 })();
 })();
