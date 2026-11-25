@@ -906,6 +906,7 @@ public class MainActivity extends Activity {
             tile(grid, iconFor(p, nav.get(i)[1]), nav.get(i)[1], () -> goTo(p));
         }
         tile(grid, "🔄", "Recharger", () -> web.reload());
+        tile(grid, "📋", "Copier pour Claude", this::copyStructure);
         tile(grid, "🤖", "Bots & réglages", this::openPanel);
 
         if (nav.isEmpty()) {
@@ -925,6 +926,23 @@ public class MainActivity extends Activity {
         }
         quick.setOnDismissListener(d -> applyWindowOptions());
         quick.show();
+    }
+
+    /** Copie le relevé des derniers écrans visités, à coller dans la discussion avec Claude. */
+    private void copyStructure() {
+        if (!onGame()) { toast("Ouvre d'abord le jeu"); return; }
+        web.evaluateJavascript("(function(){return localStorage.getItem('rbf_struct')||'[]';})()", res -> {
+            String data = "[]";
+            try {
+                Object o = new JSONTokener(res).nextValue();
+                if (o instanceof String) data = (String) o;
+            } catch (Exception ignored) { }
+            int n = 0;
+            try { n = new JSONArray(data).length(); } catch (Exception ignored) { }
+            ClipboardManager cm = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm != null) cm.setPrimaryClip(ClipData.newPlainText("Reborn BF", "RBF-PAGES " + data));
+            toast(n + " écran(s) copié(s) : colle-les dans la discussion avec Claude");
+        });
     }
 
     private void tile(GridLayout grid, String icon, String label, Runnable action) {

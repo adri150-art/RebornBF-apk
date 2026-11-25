@@ -43,3 +43,46 @@
     scan();
   }, 2000);
 })();
+
+// Relevé de la structure des pages (pour que Claude puisse ajouter des boutons au bon endroit).
+// Garde les 15 derniers écrans visités : adresse, titres, liens et boutons. Aucune donnée de compte.
+(function () {
+  'use strict';
+  if (window.__rbfStruct) return;
+  window.__rbfStruct = true;
+  const KEY = 'rbf_struct';
+  const clean = (t) => (t || '').replace(/\s+/g, ' ').trim().slice(0, 40);
+  const pattern = (p) => p.replace(/\/[0-9a-f]{8}-[0-9a-f-]{27,}/gi, '/:uuid').replace(/\/\d+/g, '/:id');
+
+  function snap() {
+    if (location.pathname.startsWith('/battle')) return;
+    const out = { p: location.pathname, pat: pattern(location.pathname), q: [...new URLSearchParams(location.search).keys()] };
+    out.h = [...document.querySelectorAll('h1,h2,h3,[class*="title"],[class*="Title"]')].map((e) => clean(e.innerText)).filter(Boolean).slice(0, 8);
+    out.a = [...document.querySelectorAll('a[href]')].map((a) => {
+      const h = a.getAttribute('href') || '';
+      return h.startsWith('/') ? [h.slice(0, 80), clean(a.innerText || a.getAttribute('aria-label') || a.title || (a.querySelector('img[alt]') || {}).alt)] : null;
+    }).filter(Boolean).slice(0, 50);
+    out.b = [...document.querySelectorAll('button,[role="button"]')].map((b) => [
+      clean(b.innerText || b.getAttribute('aria-label') || b.title || (b.querySelector('img[alt]') || {}).alt),
+      String(b.className || '').split(/\s+/)[0].slice(0, 50),
+      b.disabled ? 1 : 0,
+    ]).slice(0, 50);
+    const cls = {};
+    document.querySelectorAll('main [class], body > div [class]').forEach((e) => {
+      String(e.className || '').split(/\s+/).forEach((c) => { if (c && c.length < 60) cls[c] = (cls[c] || 0) + 1; });
+    });
+    out.c = Object.keys(cls).slice(0, 90);
+    let all = [];
+    try { all = JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { all = []; }
+    all = all.filter((x) => x.p !== out.p);
+    all.push(out);
+    if (all.length > 15) all = all.slice(-15);
+    try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) { /* plein */ }
+  }
+
+  let last = '', timer = 0;
+  setInterval(() => {
+    const k = location.pathname + location.search;
+    if (k !== last) { last = k; clearTimeout(timer); timer = setTimeout(snap, 1800); }
+  }, 500);
+})();
