@@ -20,7 +20,6 @@
     "files": [
       "main.js",
       "preload.js",
-      "ui.js",
       "icon.ico",
       "icon.png"
     ],

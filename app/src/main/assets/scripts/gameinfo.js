@@ -54,7 +54,7 @@
     .el{height:18px;vertical-align:middle}
     .tip{margin-top:6px;padding:8px 10px;border-radius:9px;background:rgba(79,194,122,.12);box-shadow:inset 0 0 0 1px rgba(79,194,122,.35);font-size:13px}
     .row2{flex:none;display:flex;gap:8px;padding:10px 12px 12px;border-top:1px solid rgba(255,210,120,.18)}
-    .gbtn{flex:1;max-width:220px;margin:0 auto;height:42px;background:url('${A}common/button/sub_ss_btn1.png') center/100% 100% no-repeat;display:flex;align-items:center;justify-content:center;
+    .gbtn{flex:1;max-width:220px;margin:0 auto;height:42px;background:none;border-style:solid;border-width:0;border-image:url('https://assets.rebornbf.com/assets/original/common/button/sub_ss_btn1.png') 26 34 fill / 13px 17px;display:flex;align-items:center;justify-content:center;
       padding-bottom:3px;cursor:pointer;color:#fff;font:15px/1 "Lilita One",system-ui,sans-serif;transition:transform .08s,filter .1s}
     .gbtn:active{transform:scale(.95);filter:brightness(1.15)}
     .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}

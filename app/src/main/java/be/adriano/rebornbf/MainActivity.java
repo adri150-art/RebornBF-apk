@@ -154,6 +154,7 @@ public class MainActivity extends Activity {
 
         fab = buildFab();
         root.addView(fab, new FrameLayout.LayoutParams(0, 0, Gravity.BOTTOM | Gravity.END));
+        fab.setVisibility(View.GONE); // le menu ☰ est maintenant dans le jeu, au style du jeu
         setContentView(root);
 
         // Encoche, coins arrondis : on mesure les zones à éviter puis on place le jeu
@@ -436,6 +437,11 @@ public class MainActivity extends Activity {
             }
         } else if (data.startsWith("notify:")) {
             notifyUser(data.substring(7));
+        } else if (data.startsWith("save:")) {
+            final String json = data.substring(5);
+            runOnUiThread(() -> saveFromPage(json));
+        } else if (data.equals("action:fullscreen")) {
+            runOnUiThread(() -> { prefs.edit().putBoolean("opt_fullscreen", !opt("fullscreen", true)).apply(); applyWindowOptions(); });
         } else if (data.matches("farm:\\d+(:\\d+)?")) {
             final String[] p = data.split(":");
             final int target = p.length > 2 ? Integer.parseInt(p[2]) : 0;
@@ -536,8 +542,60 @@ public class MainActivity extends Activity {
                 sb.append(wrap(code, start, c.optString("name", "script").replace("'", " ")));
             }
         }
+        // Menu ☰ et réglages dans le style du jeu (même interface que sur PC), reliés à l'appli
+        sb.append("window.rbfApp={platform:'android',settings:function(){return JSON.parse(")
+          .append(JSONObject.quote(settingsJson().toString()))
+          .append(")},save:function(s,u){try{rbfNative.postMessage('save:'+JSON.stringify({s:s,url:u||null}))}catch(e){}},")
+          .append("action:function(a){if(a==='back')history.back();else if(a==='reload')location.reload();else try{rbfNative.postMessage('action:'+a)}catch(e){}},")
+          .append("postMessage:function(m){try{rbfNative.postMessage(m)}catch(e){}}};\n");
+        sb.append(wrap(asset("ui.js"), false, "interface"));
         sb.append("})();");
         return sb.toString();
+    }
+
+    private static final String[] OPTS = {"remaster", "infos", "appfeel", "haptic", "antipause", "screen_on", "fullscreen",
+            "format169", "hd", "always_x2", "always_auto", "notifications"};
+    private static final boolean[] OPT_DEF = {true, true, true, true, true, true, true, true, false, true, false, true};
+
+    /** Réglages au format de l'interface (bots, options, scripts). */
+    private JSONObject settingsJson() {
+        JSONObject o = new JSONObject();
+        try {
+            JSONObject bots = new JSONObject();
+            for (String[] b : BOTS) bots.put(b[0], botOn(b[0]));
+            JSONObject opt = new JSONObject();
+            for (int i = 0; i < OPTS.length; i++) opt.put(OPTS[i], opt(OPTS[i], OPT_DEF[i]));
+            o.put("bots", bots).put("opt", opt).put("custom", customScripts()).put("farm_target", 0);
+        } catch (Exception e) { /* rien */ }
+        return o;
+    }
+
+    /** Réglages envoyés par l'interface du jeu : on les enregistre puis on recharge. */
+    private void saveFromPage(String json) {
+        try {
+            JSONObject m = new JSONObject(json);
+            JSONObject s = m.optJSONObject("s");
+            if (s == null) return;
+            SharedPreferences.Editor e = prefs.edit();
+            JSONObject bots = s.optJSONObject("bots");
+            boolean farmOn = false;
+            if (bots != null) for (String[] b : BOTS) {
+                boolean on = bots.optBoolean(b[0], false);
+                e.putBoolean("bot_" + b[0], on);
+                if (on) farmOn = true;
+            }
+            JSONObject opt = s.optJSONObject("opt");
+            if (opt != null) for (int i = 0; i < OPTS.length; i++) e.putBoolean("opt_" + OPTS[i], opt.optBoolean(OPTS[i], OPT_DEF[i]));
+            JSONArray custom = s.optJSONArray("custom");
+            if (custom != null) e.putString("custom", custom.toString());
+            e.apply();
+            if (farmOn) askNotificationPermission();
+            applyScripts();
+            applyWindowOptions();
+            String url = m.isNull("url") ? null : m.optString("url", null);
+            if (url != null && url.startsWith("/")) web.loadUrl(SITE + url);
+            else web.reload();
+        } catch (Exception ex) { /* rien */ }
     }
 
     /** Enregistre les scripts actifs : ils seront lancés à chaque chargement d'une page du jeu. */
@@ -879,7 +937,7 @@ public class MainActivity extends Activity {
                 quick.dismiss();
                 // Le jeu demande combien de combats (fenêtre de l'appli dans la page), sinon farm sans fin
                 web.evaluateJavascript("(function(){if(window.rbfData&&rbfData.farm){rbfData.farm(" + JSONObject.quote(id) + ");return 1}return 0})()",
-                        v -> { if (!"1".equals(v)) farmQuest(id, 0); });
+                        r -> { if (!"1".equals(r)) farmQuest(id, 0); });
             }));
         } else if (quest != null && !quest.isEmpty()) {
             final String id = quest;

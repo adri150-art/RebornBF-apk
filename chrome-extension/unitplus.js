@@ -232,7 +232,7 @@ try{
     .sph .pill{flex:1}.sph .pill .val{margin:0;font-size:13px;overflow:hidden;text-overflow:ellipsis}
     /* Boutons du jeu : une seule rangée compacte, texte centré sur la face du bouton */
     .actions{flex:none;display:flex;gap:5px}
-    .gbtn{flex:1;min-width:0;position:relative;height:40px;background:center/100% 100% no-repeat;cursor:pointer;
+    .gbtn{flex:1;min-width:0;position:relative;height:40px;background:none!important;border-style:solid;border-width:0;border-image:url('https://assets.rebornbf.com/assets/original/common/button/sub_ss_btn1.png') 26 34 fill / 13px 17px;cursor:pointer;
       display:flex;align-items:center;justify-content:center;padding:0 4px 3px;transition:transform .08s,filter .1s}
     .gbtn:active{transform:scale(.94);filter:brightness(1.15)}
     .gbtn span{font-size:15px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}

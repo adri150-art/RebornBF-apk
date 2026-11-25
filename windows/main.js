@@ -105,7 +105,7 @@ function buildInjection(s) {
     js += wrap(code, start, String(c.name || 'script'));
   }
   // Menu rapide et réglages (surcouche de l'appli Windows)
-  try { js += wrap(fs.readFileSync(path.join(__dirname, 'ui.js'), 'utf8'), false, 'interface'); } catch (e) { /* rien */ }
+  js += wrap(asset('ui.js'), false, 'interface');
   js += '})();';
   return js;
 }

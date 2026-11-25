@@ -241,7 +241,7 @@ try{
       .o:active{transform:scale(.95)}.o.last{box-shadow:inset 0 0 0 2px #ffd24a}
       .row{display:flex;gap:7px;margin-top:9px}
       input{flex:1;min-width:0;height:42px;border-radius:9px;border:0;padding:0 12px;background:rgba(255,255,255,.08);color:#fff;font:17px "Lilita One",system-ui,sans-serif;outline:none;box-shadow:inset 0 0 0 1px rgba(255,210,120,.3)}
-      .b{flex:none;width:100px;height:42px;background:url('${A}common/button/sub_ss_btn1.png') center/100% 100% no-repeat;display:flex;align-items:center;justify-content:center;
+      .b{flex:none;width:100px;height:42px;background:none;border-style:solid;border-width:0;border-image:url('https://assets.rebornbf.com/assets/original/common/button/sub_ss_btn1.png') 26 34 fill / 13px 17px;display:flex;align-items:center;justify-content:center;
         padding-bottom:3px;cursor:pointer;color:#fff;font:15px/1 "Lilita One",system-ui,sans-serif;text-shadow:0 0 2px #1a1006,0 0 2px #1a1006}
       .x{display:block;margin:10px auto 0;text-align:center;color:#a99f88;cursor:pointer;font-size:13px}
     </style><div class="bg"><div class="card"><h2>Farmer combien de fois ?</h2><p>Nombre de combats. Ton équipe n'est jamais changée.</p>

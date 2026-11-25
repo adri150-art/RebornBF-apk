@@ -104,7 +104,7 @@ def main():
         fn = name + '.js'
         open(os.path.join(OUT, fn), 'w', encoding='utf-8').write(wrap(code, cond, start, name))
         files.append(fn)
-    ui = open(os.path.join(ROOT, 'windows', 'ui.js'), encoding='utf-8').read()
+    ui = open(os.path.join(SCRIPTS, 'ui.js'), encoding='utf-8').read()
     open(os.path.join(OUT, 'ui.js'), 'w', encoding='utf-8').write(wrap(ui, 'true', False, 'interface'))
     files.append('ui.js')
     open(os.path.join(OUT, 'custom.js'), 'w', encoding='utf-8').write(CUSTOM)
