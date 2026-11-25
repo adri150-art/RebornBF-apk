@@ -162,7 +162,8 @@ try{
   function canFuse() {
     const left = $('[class*="unit-info-module__"][class*="__left"]') || $('[class*="unit-info-module__"][class*="__body"]');
     const txt = left ? (left.innerText || left.textContent || '') : '';
-    const m = txt.match(/Lv\.?\s*(\d+)\s*\/\s*(\d+)/i);
+    // Le mot « Lv. » est une image dans le jeu : la seule fraction de la colonne de gauche est le niveau
+    const m = txt.match(/(\d+)\s*\/\s*(\d+)/);
     if (!m || +m[1] < +m[2]) return true;
     const levels = $$('[class*="unit-info-module__"][class*="__skillLevel"]')
       .map((e) => (e.textContent || '').match(/(\d+)/)).filter(Boolean).map((x) => +x[1]);
