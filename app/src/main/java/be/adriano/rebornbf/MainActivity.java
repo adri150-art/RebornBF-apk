@@ -93,7 +93,7 @@ public class MainActivity extends Activity {
     // Bots intégrés : id, titre, description, fichier, lancé dès le début du chargement
     private static final String[][] BOTS = {
             {"farm", "Farm quête",
-                    "Relance la même quête par séries de 30 jusqu'à l'objectif. Le plus simple : ouvre une quête puis ☰ → « Farmer cette quête ».",
+                    "Relance ta quête en boucle, sans limite, jusqu'à ce que tu l'arrêtes. Ouvre une quête puis ☰ → « Farmer cette quête ».",
                     "farm.js", "0"},
             {"aventure", "Aventure auto",
                     "Avance seul dans l'histoire, en AUTO et x2. Attend l'énergie, ne dépense jamais de gemmes.",
@@ -560,11 +560,10 @@ public class MainActivity extends Activity {
     private void applyAndReload() {
         applyScripts();
         applyWindowOptions();
-        int target = prefs.getInt("farm_target", 300);
         String js = "try{"
                 + "localStorage.setItem('rbf_adv_actif','" + (botOn("aventure") ? "1" : "0") + "');"
                 + "var k='bfrRepeatBot',s=JSON.parse(localStorage.getItem(k)||'{}');"
-                + "s.target=" + target + ";" + (botOn("farm") ? "" : "s.on=false;")
+                + "s.target=0;" + (botOn("farm") ? "" : "s.on=false;")
                 + "localStorage.setItem(k,JSON.stringify(s));"
                 + "}catch(e){}";
         if (onGame()) web.evaluateJavascript(js, v -> web.reload());
@@ -574,7 +573,6 @@ public class MainActivity extends Activity {
 
     /** Démarre le farm sur la quête ouverte, sans passer par les réglages. */
     private void farmQuest(String questId, String slot) {
-        int target = prefs.getInt("farm_target", 300);
         prefs.edit().putBoolean("bot_farm", true).putBoolean("bot_aventure", false).apply();
         askNotificationPermission();
         applyScripts();
@@ -584,11 +582,11 @@ public class MainActivity extends Activity {
                 + "if(s.quest!==" + JSONObject.quote(questId) + "){s.maxRuns=null;s.single=false;}"
                 + "s.quest=" + JSONObject.quote(questId) + ";"
                 + (slot != null ? "s.slot=" + JSONObject.quote(slot) + ";" : "")
-                + "s.on=true;s.target=" + target + ";s.fights=0;s.curRun=0;s.loops=0;s.day=new Date().toDateString();"
+                + "s.on=true;s.target=0;s.fights=0;s.curRun=0;s.loops=0;s.day=new Date().toDateString();"
                 + "localStorage.setItem(k,JSON.stringify(s));"
                 + "}catch(e){}";
         web.evaluateJavascript(js, v -> web.loadUrl(SITE + "/start/" + questId));
-        toast("Farm lancé : objectif " + target + " combats");
+        toast("Farm lancé : il tourne jusqu'à ce que tu l'arrêtes");
     }
 
     /** Va sur une rubrique du jeu en utilisant sa propre navigation (rapide, sans recharger). */
@@ -872,7 +870,7 @@ public class MainActivity extends Activity {
         Matcher qm = Pattern.compile("^/start/(\\d+)").matcher(path);
         if (qm.find()) {
             final String id = qm.group(1);
-            box.addView(button("🔁  Farmer cette quête (" + prefs.getInt("farm_target", 300) + " combats)", true, v -> {
+            box.addView(button("🔁  Farmer cette quête", true, v -> {
                 quick.dismiss();
                 farmQuest(id, slot);
             }));
@@ -1032,10 +1030,6 @@ public class MainActivity extends Activity {
                 }
             });
         }
-        numberRow(box, "Objectif du farm", "Nombre total de combats avant l'arrêt", prefs.getInt("farm_target", 300), v -> {
-            prefs.edit().putInt("farm_target", v).apply();
-            dirty = true;
-        });
 
         section(box, "COMBAT");
         optionRow(box, "always_x2", "Toujours en x2", "Chaque combat passe en vitesse x2 tout seul.", true);

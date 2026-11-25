@@ -60,6 +60,39 @@
       border:1px solid rgba(255,206,110,.35);border-radius:12px;padding:10px 16px;font-size:13px;opacity:0;transition:opacity .25s;pointer-events:none}
     .toast.on{opacity:1}
     .hint{color:#8a8fa0;font-size:12px;margin:10px 4px 0}
+    .panel{background:linear-gradient(180deg,#191c26,#10121a);border-color:rgba(240,176,60,.22);padding:16px 16px 14px}
+    .head{display:flex;align-items:center;gap:12px}
+    .head .ht{flex:1;min-width:0}.head .sub{margin-top:2px}
+    .logo{width:42px;height:42px;flex:none;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;color:#1b1206;
+      background:linear-gradient(160deg,#ffe49a,#e2a133);box-shadow:0 6px 16px rgba(240,176,60,.3),inset 0 1px 0 rgba(255,255,255,.6)}
+    .sec{display:flex;align-items:baseline;gap:8px;color:#d7dae3;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;margin:18px 2px 8px}
+    .sec em{margin-left:auto;font-style:normal;font-weight:500;letter-spacing:0;text-transform:none;color:#7d8292;font-size:11px}
+    .bots{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .bot{position:relative;background:#1b1e28;border:1px solid #2a2f3d;border-radius:16px;padding:14px 12px 12px;cursor:pointer;
+      transition:border-color .15s,background .15s,transform .1s}
+    .bot:hover{border-color:#3a4052}.bot:active{transform:scale(.98)}
+    .bot i{font-style:normal;font-size:24px;display:block;margin-bottom:8px}
+    .bot b{display:block;font-size:15px}
+    .bot small{display:block;color:#8a8fa0;font-size:11.5px;margin-top:4px;line-height:1.35}
+    .bot .pill{position:absolute;top:10px;right:10px;font-size:10.5px;padding:3px 8px;border-radius:20px;background:#2a2f3d;color:#8a8fa0}
+    .bot.on{border-color:rgba(240,176,60,.75);background:linear-gradient(180deg,rgba(240,176,60,.16),rgba(240,176,60,.04))}
+    .bot.on .pill{background:#f0b03c;color:#14161d;font-weight:700}
+    .chips{display:flex;gap:8px}
+    .chip{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:46px;border-radius:13px;background:#1b1e28;
+      border:1px solid #2a2f3d;cursor:pointer;font-size:14px;color:#aeb3c2;transition:border-color .15s,background .15s,color .15s}
+    .chip i{font-style:normal}
+    .chip.on{border-color:rgba(240,176,60,.75);color:#fff;background:rgba(240,176,60,.13)}
+    .card{background:#1b1e28;border:1px solid #242835;border-radius:15px;overflow:hidden}
+    .item{display:flex;align-items:center;gap:12px;padding:12px 14px;cursor:pointer;transition:background .12s}
+    .item:hover{background:#20242f}
+    .item + .item{border-top:1px solid #262a36}
+    .item i{font-style:normal;font-size:18px;width:24px;text-align:center;flex:none}
+    .item .t{flex:1;min-width:0}.item b{display:block;font-size:14px}
+    .item small{display:block;color:#8a8fa0;font-size:12px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .empty{color:#8a8fa0;font-size:12.5px;margin:0;padding:14px}
+    .add{display:block;width:100%;padding:13px 14px;background:none;border:0;border-top:1px solid #262a36;color:#f0b03c;font-size:14px;
+      font-weight:600;cursor:pointer;text-align:left}
+    .add:hover{background:#20242f}
     kbd{background:#262a36;border-radius:5px;padding:1px 6px;font-size:11px;color:#c9ccd6}
   </style>
   <div class="fab" title="Menu (Ctrl+M)">☰</div>
@@ -119,7 +152,7 @@
     const nav = ls('rbf_nav', {});
     const qm = path.match(/^\/start\/(\d+)/);
     let html = '<div class="grip"></div>';
-    if (qm) html += `<button class="btn gold" data-a="farm" data-id="${qm[1]}">🔁  Farmer cette quête (${S.farm_target} combats)</button>`;
+    if (qm) html += `<button class="btn gold" data-a="farm" data-id="${qm[1]}">🔁  Farmer cette quête</button>`;
     else if (bot.quest) html += `<button class="btn gold" data-a="resume" data-id="${esc(bot.quest)}">▶  Reprendre ma dernière quête</button>`;
     html += '<div class="grid">';
     const tiles = [['⬅️', 'Retour', 'back'], ['🏠', 'Accueil', 'go:/home'], ['🗺️', 'Quêtes', 'go:/quests']];
@@ -164,47 +197,48 @@
       localStorage.setItem('rbf_adv_actif', '0');
       const s = ls('bfrRepeatBot', {});
       if (s.quest !== id) { s.maxRuns = null; s.single = false; }
-      Object.assign(s, { quest: id, on: true, target: S.farm_target, fights: 0, curRun: 0, loops: 0, day: new Date().toDateString() });
+      Object.assign(s, { quest: id, on: true, target: 0, fights: 0, curRun: 0, loops: 0, day: new Date().toDateString() });
       const slot = new URLSearchParams(location.search).get('slot');
       if (slot !== null) s.slot = slot;
       localStorage.setItem('bfrRepeatBot', JSON.stringify(s));
     } catch (e) { /* rien */ }
     S.bots.farm = true;
     S.bots.aventure = false;
-    toast('Farm lancé : objectif ' + S.farm_target + ' combats');
+    toast('Farm lancé : il tourne jusqu\'à ce que tu l\'arrêtes');
     N.save(S, '/start/' + id);
   }
 
   // ───────── Bots & réglages ─────────
   const sw = (on) => `<div class="sw${on ? ' on' : ''}"></div>`;
-  const row = (key, title, sub, on) => `<div class="row" data-k="${key}"><div class="t"><b>${esc(title)}</b><small>${esc(sub)}</small></div>${sw(on)}</div>`;
+  const item = (key, icon, title, sub, on) =>
+    `<div class="item" data-k="${key}"><i>${icon}</i><div class="t"><b>${esc(title)}</b><small>${esc(sub)}</small></div>${sw(on)}</div>`;
+  const bot = (key, icon, title, sub, on) =>
+    `<div class="bot${on ? ' on' : ''}" data-k="bot:${key}"><span class="pill">${on ? 'Actif' : 'Inactif'}</span><i>${icon}</i><b>${esc(title)}</b><small>${esc(sub)}</small></div>`;
+  const chip = (key, icon, title, on) => `<div class="chip${on ? ' on' : ''}" data-k="opt:${key}"><i>${icon}</i>${esc(title)}</div>`;
 
   function settings() {
     sheet.classList.remove('on');
-    let h = `<div style="display:flex;align-items:start"><div style="flex:1"><h2>Bots & réglages</h2>
-      <p class="sub">Les changements s'appliquent quand tu fermes ce panneau (le jeu se recharge).</p></div>
-      <button class="x" data-close>✕</button></div>`;
-    h += '<div class="sec">BOTS</div>';
-    h += row('bot:farm', 'Farm quête', 'Relance la même quête par séries de 30 jusqu\'à l\'objectif. Le plus simple : ouvre une quête puis ☰ → « Farmer cette quête ».', S.bots.farm);
-    h += row('bot:aventure', 'Aventure auto', 'Avance seul dans l\'histoire, en AUTO et x2. Attend l\'énergie, ne dépense jamais de gemmes.', S.bots.aventure);
-    h += `<div class="row" style="cursor:default"><div class="t"><b>Objectif du farm</b><small>Nombre total de combats avant l'arrêt</small></div>
-      <input type="number" min="1" value="${S.farm_target}" data-target></div>`;
-    h += '<div class="sec">COMBAT</div>';
-    h += row('opt:always_x2', 'Toujours en x2', 'Chaque combat passe en vitesse x2 tout seul.', S.opt.always_x2);
-    h += row('opt:always_auto', 'Toujours en AUTO', 'Chaque combat démarre en AUTO.', S.opt.always_auto);
-    h += '<div class="sec">MES SCRIPTS</div>';
-    if (!S.custom.length) h += '<p class="hint" style="margin-top:0">Aucun. Ajoute ici ton bot d\'arène ou un autre script Tampermonkey.</p>';
-    S.custom.forEach((c, i) => {
-      h += `<div class="row" data-k="custom:${i}"><div class="t"><b>${esc(c.name || 'Script')}</b><small>Clic droit pour supprimer</small></div>${sw(c.on !== false)}</div>`;
-    });
-    h += '<button class="btn" data-add>+ Ajouter un script</button>';
-    h += '<div class="sec">CONFORT</div>';
-    h += row('opt:remaster', 'Remaster des fiches d\'unité', 'Boutons Améliorer / Évoluer sur la fiche, cadres plus modernes.', S.opt.remaster);
-    h += row('opt:appfeel', 'Style appli', 'Boutons qui réagissent, transitions douces.', S.opt.appfeel);
-    h += row('opt:antipause', 'Anti-pause', 'Le jeu continue même si la fenêtre est derrière une autre.', S.opt.antipause);
-    h += row('opt:notifications', 'Notifications', 'Prévient quand un bot s\'arrête (farm terminé, plus de passages…).', S.opt.notifications);
-    h += row('opt:hd', 'Filtre HD', 'Images un peu plus nettes et colorées.', S.opt.hd);
-    h += `<div class="actions"><button class="btn" data-a="fullscreen">Plein écran (F11)</button><button class="btn gold" data-close>Fermer</button></div>`;
+    let h = `<div class="head"><div class="logo">◆</div><div class="ht"><h2>Bots & réglages</h2>
+      <p class="sub">S'applique quand tu fermes le panneau</p></div><button class="x" data-close aria-label="Fermer">✕</button></div>`;
+    h += '<div class="sec">Bots<em>un seul à la fois</em></div><div class="bots">';
+    h += bot('farm', '🔁', 'Farm quête', 'Relance ta quête en boucle, sans limite. Ouvre une quête puis ☰ → Farmer.', S.bots.farm);
+    h += bot('aventure', '🗺️', 'Aventure auto', 'Avance seul dans l\'histoire. Ne dépense jamais de gemmes.', S.bots.aventure);
+    h += '</div>';
+    h += '<div class="sec">Combat</div><div class="chips">';
+    h += chip('always_x2', '⏩', 'Toujours x2', S.opt.always_x2) + chip('always_auto', '🤖', 'Toujours AUTO', S.opt.always_auto);
+    h += '</div>';
+    h += '<div class="sec">Mes scripts<em>clic droit pour supprimer</em></div><div class="card">';
+    if (!S.custom.length) h += '<p class="empty">Aucun script. Ajoute ton bot d\'arène ou un autre script Tampermonkey.</p>';
+    S.custom.forEach((c, i) => { h += item('custom:' + i, '📄', c.name || 'Script', c.on !== false ? 'Activé' : 'Désactivé', c.on !== false); });
+    h += '<button class="add" data-add>＋ Ajouter un script</button></div>';
+    h += '<div class="sec">Confort</div><div class="card">';
+    h += item('opt:remaster', '🃏', 'Fiche d\'unité remaster', 'Boutons Favori, Aide, Améliorer, Évoluer', S.opt.remaster);
+    h += item('opt:appfeel', '✨', 'Style appli', 'Boutons qui réagissent, transitions douces', S.opt.appfeel);
+    h += item('opt:antipause', '⏯️', 'Anti-pause', 'Le jeu continue quand la fenêtre est derrière', S.opt.antipause);
+    h += item('opt:notifications', '🔔', 'Notifications', 'Prévient quand un bot s\'arrête', S.opt.notifications);
+    h += item('opt:hd', '🖼️', 'Filtre HD', 'Images un peu plus nettes et colorées', S.opt.hd);
+    h += '</div>';
+    h += `<div class="actions"><button class="btn" data-a="fullscreen">⛶  Plein écran</button><button class="btn gold" data-close>Fermer</button></div>`;
     panel.innerHTML = h;
     panelOpen = true;
     scrim.classList.add('on');
@@ -215,25 +249,34 @@
     if (e.target.closest('[data-close]')) { closeAll(); return; }
     if (e.target.closest('[data-a="fullscreen"]')) { N.action('fullscreen'); return; }
     if (e.target.closest('[data-add]')) { addScript(); return; }
-    const r = e.target.closest('.row[data-k]');
-    if (!r) return;
-    const [kind, key] = r.dataset.k.split(':');
-    const s = r.querySelector('.sw');
-    const on = !s.classList.contains('on');
-    if (kind === 'bot') {
-      S.bots[key] = on;
-      if (on) Object.keys(S.bots).forEach((b) => { if (b !== key) S.bots[b] = false; }); // un seul bot à la fois
-    } else if (kind === 'opt') {
-      S.opt[key] = on;
-    } else if (kind === 'custom') {
-      S.custom[+key].on = on;
-    }
+    const el = e.target.closest('[data-k]');
+    if (!el) return;
+    const [kind, key] = el.dataset.k.split(':');
     dirty = true;
-    if (kind === 'bot') settings(); else s.classList.toggle('on', on);
+    if (kind === 'bot') {
+      const on = !S.bots[key];
+      Object.keys(S.bots).forEach((b) => { S.bots[b] = false; }); // un seul bot à la fois
+      S.bots[key] = on;
+      panel.querySelectorAll('.bot').forEach((c) => {
+        const k = c.dataset.k.split(':')[1];
+        c.classList.toggle('on', !!S.bots[k]);
+        c.querySelector('.pill').textContent = S.bots[k] ? 'Actif' : 'Inactif';
+      });
+      return;
+    }
+    const target = el.classList.contains('chip') ? el : el.querySelector('.sw');
+    const on = !target.classList.contains('on');
+    target.classList.toggle('on', on);
+    if (kind === 'opt') S.opt[key] = on;
+    else if (kind === 'custom') {
+      S.custom[+key].on = on;
+      const sm = el.querySelector('small');
+      if (sm) sm.textContent = on ? 'Activé' : 'Désactivé';
+    }
   });
 
   panel.addEventListener('contextmenu', (e) => {
-    const r = e.target.closest('.row[data-k^="custom:"]');
+    const r = e.target.closest('[data-k^="custom:"]');
     if (!r) return;
     e.preventDefault();
     const i = +r.dataset.k.split(':')[1];
@@ -241,13 +284,6 @@
       S.custom.splice(i, 1);
       dirty = true;
       settings();
-    }
-  });
-
-  panel.addEventListener('input', (e) => {
-    if (e.target.matches('[data-target]')) {
-      const v = parseInt(e.target.value, 10);
-      if (v > 0) { S.farm_target = v; dirty = true; }
     }
   });
 
@@ -289,7 +325,6 @@
     try {
       localStorage.setItem('rbf_adv_actif', S.bots.aventure ? '1' : '0');
       const s = ls('bfrRepeatBot', {});
-      s.target = S.farm_target;
       if (!S.bots.farm) s.on = false;
       localStorage.setItem('bfrRepeatBot', JSON.stringify(s));
     } catch (e) { /* rien */ }

@@ -17,8 +17,9 @@ try{
   // single  : le donjon n'accepte plus de répétition → lancement simple
   // target : nombre total de combats à faire avant d'arrêter (réglé dans le panneau de l'appli)
   let st = Object.assign({ on: false, quest: null, slot: null, loops: 0, maxRuns: null, single: false, day: today(),
-    target: 300, fights: 0, curRun: 0 }, load());
-  const remaining = () => Math.max(0, st.target - st.fights);
+    fights: 0, curRun: 0 }, load());
+  st.target = 0; // pas d'objectif : le farm tourne jusqu'à ce qu'on l'arrête
+  const remaining = () => (st.target ? Math.max(0, st.target - st.fights) : Infinity);
   // Nombre de combats à demander pour la prochaine série (30 max par série dans le jeu)
   const wanted = () => Math.min(st.maxRuns || 30, remaining());
 
@@ -49,7 +50,8 @@ try{
   let status = '';
   const draw = () => {
     hud.classList.toggle('on', !!st.on);
-    hud.querySelector('b').textContent = 'Farm ' + (st.fights + st.curRun) + '/' + st.target;
+    const n = st.fights + st.curRun;
+    hud.querySelector('b').textContent = 'Farm · ' + n + ' combat' + (n > 1 ? 's' : '');
     hud.querySelector('span').textContent = status || (st.on ? 'actif' : 'touche pour lancer');
   };
   hud.addEventListener('click', () => {
