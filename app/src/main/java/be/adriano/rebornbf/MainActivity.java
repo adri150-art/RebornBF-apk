@@ -130,7 +130,9 @@ public class MainActivity extends Activity {
         requestWindowFeature(Window.FEATURE_NO_TITLE);
 
         root = new FrameLayout(this);
-        root.setBackgroundColor(0xFF07060C);
+        // Bandes autour du jeu : dégradé sombre assorti au jeu plutôt qu'un noir plat
+        root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{0xFF0E1222, 0xFF07060C, 0xFF07060C, 0xFF16101E}));
 
         web = new WebView(this);
         setupWeb(web);
@@ -507,6 +509,7 @@ public class MainActivity extends Activity {
         if (opt("antipause", true)) sb.append(wrap(asset("antipause.js"), true, "anti-pause"));
         if (opt("appfeel", true)) sb.append(wrap(asset("appfeel.js"), false, "style appli"));
         sb.append(wrap(asset("nav.js"), false, "menu rapide"));
+        if (opt("remaster", true)) sb.append(wrap(asset("unitplus.js"), false, "fiche d'unité"));
         if (opt("hd", false)) sb.append(wrap(asset("hd.js"), false, "filtre HD"));
         boolean auto = opt("always_auto", false), x2 = opt("always_x2", true);
         if (auto || x2) {
@@ -1071,6 +1074,7 @@ public class MainActivity extends Activity {
         box.addView(button("+ Ajouter un script", false, v -> addScriptDialog(box)));
 
         section(box, "CONFORT");
+        optionRow(box, "remaster", "Remaster des fiches d'unité", "Boutons Améliorer / Évoluer sur la fiche, compétences lisibles en entier, cadres modernes.", true);
         optionRow(box, "appfeel", "Style appli", "Boutons qui réagissent, transitions douces, plus de sélection de texte par erreur.", true);
         optionRow(box, "haptic", "Vibrations", "Petite vibration quand tu touches un bouton.", true);
         optionRow(box, "antipause", "Anti-pause", "Le jeu continue même si l'appli passe derrière ou si une notification arrive.", true);
