@@ -436,9 +436,10 @@ public class MainActivity extends Activity {
             }
         } else if (data.startsWith("notify:")) {
             notifyUser(data.substring(7));
-        } else if (data.startsWith("farm:") && data.substring(5).matches("\\d+")) {
-            final String id = data.substring(5);
-            runOnUiThread(() -> farmQuest(id, null));
+        } else if (data.matches("farm:\\d+(:\\d+)?")) {
+            final String[] p = data.split(":");
+            final int target = p.length > 2 ? Integer.parseInt(p[2]) : 0;
+            runOnUiThread(() -> farmQuest(p[1], target));
         }
     }
 
@@ -568,7 +569,7 @@ public class MainActivity extends Activity {
         String js = "try{"
                 + "localStorage.setItem('rbf_adv_actif','" + (botOn("aventure") ? "1" : "0") + "');"
                 + "var k='bfrRepeatBot',s=JSON.parse(localStorage.getItem(k)||'{}');"
-                + "s.target=0;" + (botOn("farm") ? "" : "s.on=false;")
+                + (botOn("farm") ? "" : "s.on=false;")
                 + "localStorage.setItem(k,JSON.stringify(s));"
                 + "}catch(e){}";
         if (onGame()) web.evaluateJavascript(js, v -> web.reload());
@@ -577,7 +578,7 @@ public class MainActivity extends Activity {
     }
 
     /** Démarre le farm sur la quête ouverte, sans passer par les réglages. */
-    private void farmQuest(String questId, String slot) {
+    private void farmQuest(String questId, int target) {
         prefs.edit().putBoolean("bot_farm", true).putBoolean("bot_aventure", false).apply();
         askNotificationPermission();
         applyScripts();
@@ -586,12 +587,11 @@ public class MainActivity extends Activity {
                 + "var k='bfrRepeatBot',s=JSON.parse(localStorage.getItem(k)||'{}');"
                 + "if(s.quest!==" + JSONObject.quote(questId) + "){s.maxRuns=null;s.single=false;}"
                 + "s.quest=" + JSONObject.quote(questId) + ";"
-                + (slot != null ? "s.slot=" + JSONObject.quote(slot) + ";" : "")
-                + "s.on=true;s.target=0;s.fights=0;s.curRun=0;s.loops=0;s.day=new Date().toDateString();"
+                + "s.slot=null;s.on=true;s.target=" + Math.max(0, target) + ";s.fights=0;s.curRun=0;s.loops=0;s.day=new Date().toDateString();"
                 + "localStorage.setItem(k,JSON.stringify(s));"
                 + "}catch(e){}";
         web.evaluateJavascript(js, v -> web.loadUrl(SITE + "/start/" + questId));
-        toast("Farm lancé : il tourne jusqu'à ce que tu l'arrêtes");
+        toast(target > 0 ? "Farm lancé : " + target + " combats" : "Farm lancé : il tourne jusqu'à ce que tu l'arrêtes");
     }
 
     /** Va sur une rubrique du jeu en utilisant sa propre navigation (rapide, sans recharger). */
@@ -877,7 +877,9 @@ public class MainActivity extends Activity {
             final String id = qm.group(1);
             box.addView(button("🔁  Farmer cette quête", true, v -> {
                 quick.dismiss();
-                farmQuest(id, slot);
+                // Le jeu demande combien de combats (fenêtre de l'appli dans la page), sinon farm sans fin
+                web.evaluateJavascript("(function(){if(window.rbfData&&rbfData.farm){rbfData.farm(" + JSONObject.quote(id) + ");return 1}return 0})()",
+                        v -> { if (!"1".equals(v)) farmQuest(id, 0); });
             }));
         } else if (quest != null && !quest.isEmpty()) {
             final String id = quest;

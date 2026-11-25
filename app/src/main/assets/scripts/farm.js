@@ -15,7 +15,8 @@
   // target : nombre total de combats à faire avant d'arrêter (réglé dans le panneau de l'appli)
   let st = Object.assign({ on: false, quest: null, slot: null, loops: 0, maxRuns: null, single: false, day: today(),
     fights: 0, curRun: 0 }, load());
-  st.target = 0; // pas d'objectif : le farm tourne jusqu'à ce qu'on l'arrête
+  st.target = Math.max(0, parseInt(st.target, 10) || 0); // 0 = sans fin, sinon nombre de combats choisi au lancement
+  st.slot = null; // on ne force jamais une équipe : le jeu garde celle que tu as choisie
   const remaining = () => (st.target ? Math.max(0, st.target - st.fights) : Infinity);
   // Nombre de combats à demander pour la prochaine série (30 max par série dans le jeu)
   const wanted = () => Math.min(st.maxRuns || 30, remaining());
@@ -48,10 +49,13 @@
   const draw = () => {
     hud.classList.toggle('on', !!st.on);
     const n = st.fights + st.curRun;
-    hud.querySelector('b').textContent = 'Farm · ' + n + ' combat' + (n > 1 ? 's' : '');
+    hud.querySelector('b').textContent = 'Farm · ' + (st.target ? n + ' / ' + st.target : n + ' combat' + (n > 1 ? 's' : ''));
     hud.querySelector('span').textContent = status || (st.on ? 'actif' : 'touche pour lancer');
   };
   hud.addEventListener('click', () => {
+    // Lancement depuis une quête : on demande combien de combats faire
+    const q = location.pathname.match(/^\/start\/(\d+)/);
+    if (!st.on && q && window.rbfData && window.rbfData.farm) { window.rbfData.farm(q[1]); return; }
     st.on = !st.on;
     if (st.on) {
       if (remaining() <= 0 || !st.fights) { st.fights = 0; st.curRun = 0; st.loops = 0; } // nouveau farm
@@ -60,8 +64,6 @@
       if (m) {
         if (st.quest !== m[1]) resetLimits();
         st.quest = m[1];
-        const slot = new URLSearchParams(location.search).get('slot');
-        if (slot !== null) st.slot = slot;
       }
       if (!st.quest && !location.pathname.startsWith('/battle')) {
         status = 'ouvre une quête d\'abord';
@@ -134,9 +136,7 @@
         setStatus('renfort');
         const ally = $$('a[href*="/begin"][href*="ally="]').find(visible) || $$('a[href*="/begin"]').find(visible);
         if (ally) {
-          let href = ally.getAttribute('href');
-          if (st.slot !== null && st.slot !== undefined) href = href.replace(/slot=\d+/, 'slot=' + st.slot);
-          location.href = href;
+          location.href = ally.getAttribute('href'); // lien du jeu tel quel : ton équipe n'est jamais changée
         }
       }
 

@@ -205,16 +205,64 @@ try{
     return Object.assign(missionLabel(M, m), { id: +id, zel: m.zel, exp: m.exp, karma: m.karma, waves, loot });
   }
 
-  // Lance le bot de farm sur une mission (Windows / Chrome : panneau de l'appli ; Android : appli native)
+  // Lance le bot de farm sur une mission, après avoir demandé combien de combats faire
+  function startFarm(id, target) {
+    if (window.__rbfUI && window.__rbfUI.farm) { window.__rbfUI.farm(id, target); return; }
+    if (window.rbfNative && typeof window.rbfNative.save !== 'function' && window.rbfNative.postMessage) {
+      window.rbfNative.postMessage('farm:' + id + ':' + target);
+      return;
+    }
+    try {
+      const s = JSON.parse(localStorage.getItem('bfrRepeatBot') || '{}');
+      Object.assign(s, { quest: id, on: true, target, fights: 0, curRun: 0, loops: 0, slot: null, maxRuns: null, single: false, day: new Date().toDateString() });
+      localStorage.setItem('bfrRepeatBot', JSON.stringify(s));
+    } catch (e) { /* rien */ }
+    location.assign('/start/' + id);
+  }
   function farm(missionId) {
     const id = String(missionId);
-    if (window.__rbfUI && window.__rbfUI.farm) { window.__rbfUI.farm(id); return true; }
-    if (window.rbfNative && typeof window.rbfNative.save !== 'function' && window.rbfNative.postMessage) {
-      window.rbfNative.postMessage('farm:' + id);
-      return true;
-    }
-    location.assign('/start/' + id);
-    return false;
+    let last = 0;
+    try { last = parseInt(localStorage.getItem('rbf_farm_last_n'), 10) || 0; } catch (e) { /* rien */ }
+    const host = document.createElement('div');
+    host.style.cssText = 'position:fixed;inset:0;z-index:2147483647';
+    const r = host.attachShadow({ mode: 'open' });
+    const A = 'https://assets.rebornbf.com/assets/original/';
+    const opts = [10, 30, 50, 100, 300, 0];
+    r.innerHTML = `<style>
+      *{box-sizing:border-box;margin:0}
+      .bg{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px}
+      .card{width:min(360px,100%);border-radius:12px;background:rgba(14,11,7,.97);box-shadow:inset 0 0 0 1.5px rgba(255,210,120,.45),0 8px 24px rgba(0,0,0,.6);
+        padding:14px;color:#f1ead8;font:14px/1.4 "Segoe UI Variable","Segoe UI",system-ui,sans-serif}
+      h2{font:20px/1.2 "Lilita One",system-ui,sans-serif;font-weight:400;color:#ffd24a}
+      p{color:#cfc6b0;font-size:13px;margin:3px 0 10px}
+      .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+      .o{height:44px;border-radius:9px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(255,255,255,.06);
+        box-shadow:inset 0 0 0 1px rgba(255,210,120,.25);font:18px/1 "Lilita One",system-ui,sans-serif;color:#fff;transition:transform .08s}
+      .o:active{transform:scale(.95)}.o.last{box-shadow:inset 0 0 0 2px #ffd24a}
+      .row{display:flex;gap:7px;margin-top:9px}
+      input{flex:1;min-width:0;height:42px;border-radius:9px;border:0;padding:0 12px;background:rgba(255,255,255,.08);color:#fff;font:17px "Lilita One",system-ui,sans-serif;outline:none;box-shadow:inset 0 0 0 1px rgba(255,210,120,.3)}
+      .b{flex:none;width:100px;height:42px;background:url('${A}common/button/sub_ss_btn1.png') center/100% 100% no-repeat;display:flex;align-items:center;justify-content:center;
+        padding-bottom:3px;cursor:pointer;color:#fff;font:15px/1 "Lilita One",system-ui,sans-serif;text-shadow:0 0 2px #1a1006,0 0 2px #1a1006}
+      .x{display:block;margin:10px auto 0;text-align:center;color:#a99f88;cursor:pointer;font-size:13px}
+    </style><div class="bg"><div class="card"><h2>Farmer combien de fois ?</h2><p>Nombre de combats. Ton équipe n'est jamais changée.</p>
+      <div class="grid">${opts.map((n) => `<div class="o${n === last ? ' last' : ''}" data-n="${n}">${n || '∞'}</div>`).join('')}</div>
+      <div class="row"><input type="number" min="1" max="9999" placeholder="Autre nombre"><div class="b" data-go>Lancer</div></div>
+      <span class="x" data-x>Annuler</span></div></div>`;
+    const done = (n) => {
+      host.remove();
+      if (n === null) return;
+      try { localStorage.setItem('rbf_farm_last_n', String(n)); } catch (e) { /* rien */ }
+      startFarm(id, n);
+    };
+    r.addEventListener('click', (e) => {
+      const o = e.target.closest('[data-n]');
+      if (o) { done(+o.dataset.n); return; }
+      if (e.target.closest('[data-go]')) { const v = parseInt(r.querySelector('input').value, 10); if (v > 0) done(v); return; }
+      if (e.target.closest('[data-x]') || e.target.classList.contains('bg')) done(null);
+    });
+    r.querySelector('input').addEventListener('keydown', (e) => { if (e.key === 'Enter') { const v = parseInt(e.target.value, 10); if (v > 0) done(v); } e.stopPropagation(); });
+    document.documentElement.appendChild(host);
+    return true;
   }
 
   // ───────── Effets en texte (modèles fournis par l'API) ─────────

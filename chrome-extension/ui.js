@@ -183,7 +183,7 @@ try{
     else if (a === 'copy') copyForClaude();
     else if (a.startsWith('go:')) goTo(a.slice(3));
     else if (a === 'resume') location.assign('/start/' + el.dataset.id);
-    else if (a === 'farm') farmQuest(el.dataset.id);
+    else if (a === 'farm') { if (window.rbfData) window.rbfData.farm(el.dataset.id); else farmQuest(el.dataset.id); }
   });
 
   function copyForClaude() {
@@ -195,19 +195,17 @@ try{
       .catch(() => toast('Copie impossible'));
   }
 
-  function farmQuest(id) {
+  function farmQuest(id, target) {
     try {
       localStorage.setItem('rbf_adv_actif', '0');
       const s = ls('bfrRepeatBot', {});
       if (s.quest !== id) { s.maxRuns = null; s.single = false; }
-      Object.assign(s, { quest: id, on: true, target: 0, fights: 0, curRun: 0, loops: 0, day: new Date().toDateString() });
-      const slot = new URLSearchParams(location.search).get('slot');
-      if (slot !== null) s.slot = slot;
+      Object.assign(s, { quest: id, on: true, target: Math.max(0, parseInt(target, 10) || 0), fights: 0, curRun: 0, loops: 0, slot: null, day: new Date().toDateString() });
       localStorage.setItem('bfrRepeatBot', JSON.stringify(s));
     } catch (e) { /* rien */ }
     S.bots.farm = true;
     S.bots.aventure = false;
-    toast('Farm lancé : il tourne jusqu\'à ce que tu l\'arrêtes');
+    toast(+target ? 'Farm lancé : ' + target + ' combats' : 'Farm lancé : il tourne jusqu\'à ce que tu l\'arrêtes');
     N.save(S, '/start/' + id);
   }
 
@@ -343,7 +341,7 @@ try{
   mount();
   setInterval(mount, 2000);
 
-  window.__rbfUI = { quick, settings, close: closeAll, farm: (id) => farmQuest(String(id)) };
+  window.__rbfUI = { quick, settings, close: closeAll, farm: (id, n) => farmQuest(String(id), n) };
 })();
 
 }catch(e){console.error("[RBF] interface",e)}
