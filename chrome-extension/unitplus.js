@@ -196,7 +196,8 @@ try{
     .star:active{transform:scale(.85)} .star.off{color:rgba(255,255,255,.55)}
     /* L'illustration prend toute la place restante : jamais de défilement */
     .hero{flex:1 1 auto;min-height:90px;position:relative;display:flex;align-items:center;justify-content:center;pointer-events:none;margin:-4px -7px 0}
-    .hero > img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,.55));
+    .hero > img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,.55));pointer-events:auto;
+      -webkit-touch-callout:none;-webkit-user-drag:none;touch-action:pan-y;
       animation:float 6s ease-in-out infinite;transform-origin:50% 90%}
     @keyframes float{0%,100%{transform:translateY(0) scale(1.08)}50%{transform:translateY(-5px) scale(1.08)}}
     .arrow{position:absolute;top:50%;margin-top:-22px;width:30px;height:44px;pointer-events:auto;cursor:pointer;color:#ffd24a;font-size:32px;
@@ -273,9 +274,77 @@ try{
     .gbtn.mini{flex:none;width:86px;height:34px}.gbtn.mini span{font-size:13px}
     .card .row2{display:flex;gap:8px;padding:2px 12px 12px}.card .row2 .gbtn{height:42px}
   </style>
-  <div class="wrap"><div class="shade"></div><div class="page"></div><div class="pop"></div></div>`;
+  <style>
+    /* Vue « artwork » plein écran façon carte de gacha : fond aux couleurs de l'élément */
+    .art{position:absolute;inset:0;z-index:20;overflow:hidden;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;
+      transition:opacity .22s ease-out;background:radial-gradient(circle at 50% 45%,var(--c1) 0%,var(--c2) 38%,var(--c3) 75%,#050304 100%)}
+    .art.on{opacity:1;pointer-events:auto}
+    .art .rays{position:absolute;left:50%;top:45%;width:220vmax;height:220vmax;margin:-110vmax 0 0 -110vmax;opacity:.26;mix-blend-mode:screen;
+      background:repeating-conic-gradient(from 0deg,var(--ray) 0deg 7deg,transparent 7deg 18deg);animation:spin 40s linear infinite;
+      -webkit-mask:radial-gradient(circle,#000 0%,rgba(0,0,0,.7) 25%,transparent 60%);mask:radial-gradient(circle,#000 0%,rgba(0,0,0,.7) 25%,transparent 60%)}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .art .glow{position:absolute;left:50%;top:45%;width:90%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;
+      background:radial-gradient(circle,var(--glow) 0%,transparent 65%);filter:blur(10px);animation:pulse 3.2s ease-in-out infinite}
+    @keyframes pulse{0%,100%{opacity:.75;transform:translate(-50%,-50%) scale(.95)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}}
+    .art .spark{position:absolute;width:4px;height:4px;border-radius:50%;background:var(--ray);box-shadow:0 0 8px 2px var(--ray);opacity:0;animation:rise var(--d) linear infinite;animation-delay:var(--w)}
+    @keyframes rise{0%{opacity:0;transform:translateY(0) scale(.6)}15%{opacity:.9}100%{opacity:0;transform:translateY(-70vh) scale(1.2)}}
+    .art img.big{position:relative;max-width:112%;max-height:86%;object-fit:contain;image-rendering:auto;
+      filter:drop-shadow(0 0 14px var(--glow)) drop-shadow(0 18px 26px rgba(0,0,0,.6));transform:scale(.86);opacity:0;transition:transform .45s cubic-bezier(.2,1.4,.4,1),opacity .25s}
+    .art.on img.big{transform:scale(1);opacity:1;animation:breathe 6s ease-in-out .5s infinite}
+    @keyframes breathe{0%,100%{transform:scale(1) translateY(0)}50%{transform:scale(1.015) translateY(-6px)}}
+    .art .cap{position:absolute;left:0;right:0;bottom:14px;text-align:center;pointer-events:none}
+    .art .cap b{display:block;font:24px/1.1 "Lilita One",system-ui,sans-serif;font-weight:400;color:#fff}
+    .art .cap span{display:inline-flex;align-items:center;gap:6px;margin-top:5px;font:13px "Lilita One",system-ui,sans-serif;color:#ffd24a}
+    .art .cap img{height:18px}
+    .art .hint{position:absolute;top:10px;left:0;right:0;text-align:center;font:12px "Segoe UI",system-ui,sans-serif;color:rgba(255,255,255,.55);pointer-events:none}
+  </style>
+  <div class="wrap"><div class="shade"></div><div class="page"></div><div class="pop"></div><div class="art"></div></div>`;
   const scrollEl = root.querySelector('.page');
   const popEl = root.querySelector('.pop');
+  const artEl = root.querySelector('.art');
+
+  // ───────── Appui long sur l'illustration : artwork en grand, fond aux couleurs de l'élément ─────────
+  const ELEM = {
+    fire: ['#ffb36b', '#d1381b', '#4a0c05', 'rgba(255,170,90,.9)', 'rgba(255,120,40,.75)'],
+    water: ['#9fe3ff', '#1f7fd1', '#06204a', 'rgba(170,230,255,.9)', 'rgba(80,180,255,.7)'],
+    earth: ['#c8ff9a', '#3fa62e', '#0b3310', 'rgba(200,255,150,.85)', 'rgba(110,220,90,.7)'],
+    thunder: ['#fff6a0', '#e2b014', '#4a3600', 'rgba(255,245,150,.95)', 'rgba(255,215,60,.75)'],
+    light: ['#ffffff', '#f3dc9a', '#6b5520', 'rgba(255,255,235,.95)', 'rgba(255,240,190,.8)'],
+    dark: ['#e0a8ff', '#7a2bb3', '#1a0629', 'rgba(220,160,255,.85)', 'rgba(170,80,255,.7)'],
+  };
+  function openArt() {
+    const d = read();
+    if (!d || !d.art) return;
+    const el = ((d.element || '').match(/attribute_mark_M\/(\w+)\.png/) || [])[1] || 'light';
+    const c = ELEM[el] || ELEM.light;
+    ['--c1', '--c2', '--c3', '--ray', '--glow'].forEach((k, i) => artEl.style.setProperty(k, c[i]));
+    let sparks = '';
+    for (let i = 0; i < 18; i++) {
+      sparks += `<i class="spark" style="left:${Math.round(Math.random() * 100)}%;bottom:${Math.round(Math.random() * 25) - 5}%;--d:${(4 + Math.random() * 4).toFixed(1)}s;--w:-${(Math.random() * 8).toFixed(1)}s"></i>`;
+    }
+    artEl.innerHTML = `<div class="rays"></div><div class="glow"></div>${sparks}
+      <img class="big" src="${esc(d.art)}" alt="" draggable="false">
+      <div class="cap"><b class="ol">${esc(d.name)}</b><span class="ol">${d.element ? `<img src="${esc(d.element)}" alt="">` : ''}${esc(d.no)}${d.rarityImg ? `<img src="${esc(d.rarityImg)}" alt="">` : ''}</span></div>
+      <div class="hint">Touche pour fermer</div>`;
+    requestAnimationFrame(() => artEl.classList.add('on'));
+    try { if (window.rbfNative && window.rbfNative.postMessage) window.rbfNative.postMessage('tap'); } catch (e) { /* rien */ }
+  }
+  function closeArt() { artEl.classList.remove('on'); setTimeout(() => { if (!artEl.classList.contains('on')) artEl.innerHTML = ''; }, 260); }
+  artEl.addEventListener('click', closeArt);
+  let pressT = 0, pressX = 0, pressY = 0, pressed = false;
+  root.addEventListener('pointerdown', (e) => {
+    const img = e.target.closest && e.target.closest('.hero > img');
+    if (!img) return;
+    pressX = e.clientX; pressY = e.clientY; pressed = false;
+    clearTimeout(pressT);
+    pressT = setTimeout(() => { pressed = true; openArt(); }, 420);
+  });
+  const cancelPress = (e) => { if (e.type === 'pointermove' && Math.hypot(e.clientX - pressX, e.clientY - pressY) < 10) return; clearTimeout(pressT); };
+  root.addEventListener('pointermove', cancelPress);
+  root.addEventListener('pointerup', cancelPress);
+  root.addEventListener('pointercancel', cancelPress);
+  root.addEventListener('contextmenu', (e) => { if (e.target.closest && e.target.closest('.hero > img, .art')) e.preventDefault(); });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && artEl.classList.contains('on')) closeArt(); });
   let openSkill = -1;
   let lastKey = '';
   let lastPop = '';
