@@ -48,13 +48,14 @@ try{
       const label = imgOf($('dt', row) || row);
       const value = txt($(U('value'), row)) || txt(row);
       if (/type\.png/.test(label)) { d.type = value; d.typeIcon = label; }
-      else if (/\/lv\.png/.test(label)) d.lv = value;
+      else if (/\/lv\.png/.test(label)) { d.lv = value; d.lvIcon = label; }
       else if (/next\.png/.test(label)) d.next = value;
       else if (/__exp(\s|$)/.test(row.className)) {
         const f = $(U('expFill'), row);
         d.exp = f ? parseFloat(f.style.width) || 0 : 0;
       } else if (/__statRow/.test(row.className)) {
         const bonus = $('[class*="__bonus"] [class*="__value"]', row);
+        if (!d.assets) { const any = imgOf(row); const m = any.match(/^(.*\/assets\/original\/)/); if (m) d.assets = m[1]; }
         d.stats.push({ icon: label, value: txt($('dd', row)) || value, bonus: txt(bonus) });
       }
     });
@@ -64,15 +65,15 @@ try{
     });
     $$(U('plate')).forEach((p) => {
       const l = $$('img', p).map((i) => i.currentSrc || i.src).find((src) => /status_char/.test(src)) || '';
-      if (/cost\.png/.test(l)) d.cost = txt(p);
-      else if (/sp\.png/.test(l)) d.sp = txt(p);
+      if (/cost\.png/.test(l)) { d.cost = txt(p); d.costIcon = l; }
+      else if (/sp\.png/.test(l)) { d.sp = txt(p); d.spIcon = l; }
     });
     $$(U('skillRow')).forEach((s, i) => {
       const eff = $(U('skillEffects'), s);
       let text = '';
       if (eff) { const c = eff.cloneNode(true); c.querySelectorAll('[class*="__repeat"]').forEach((e) => e.remove()); text = txt(c); }
       const lab = $$('img', s).map((im) => im.currentSrc || im.src).find((src) => /leader_burst_label|label/.test(src)) || imgOf(s);
-      d.skills.push({ i, kind: skillKind(lab), name: txt($(U('skillName'), s)), level: txt($(U('skillLevel'), s)), text });
+      d.skills.push({ i, kind: skillKind(lab), label: lab, name: txt($(U('skillName'), s)), level: txt($(U('skillLevel'), s)), text });
     });
     return d;
   }
@@ -122,89 +123,90 @@ try{
   root.innerHTML = `<style>
     :host{all:initial}
     *{box-sizing:border-box;margin:0}
-    .wrap{position:absolute;inset:0;overflow:hidden;color:#eef1f8;font:14px/1.35 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;
-      background:#0b0d16;-webkit-tap-highlight-color:transparent;user-select:none}
-    .bg{position:absolute;inset:-40px;background-size:cover;background-position:center;filter:blur(26px) saturate(1.3) brightness(.42);transform:scale(1.1)}
-    .shade{position:absolute;inset:0;background:radial-gradient(120% 70% at 50% 28%,rgba(11,13,22,0) 0%,rgba(11,13,22,.55) 60%,#0b0d16 100%)}
-    .scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-bottom:16px}
+    .wrap{position:absolute;inset:0;overflow:hidden;color:#fff;font:14px/1.35 "Lilita One","Lilita One Fallback",system-ui,sans-serif;
+      background:#2a2416 center top/100% auto;-webkit-tap-highlight-color:transparent;user-select:none}
+    .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(20,14,6,.55) 100%)}
+    .scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-bottom:14px}
     .scroll::-webkit-scrollbar{display:none}
-    .lilita{font-family:"Lilita One","Lilita One Fallback",system-ui,sans-serif;letter-spacing:.3px;font-weight:400}
-    .top{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:10px;padding:10px 12px;
-      background:linear-gradient(180deg,rgba(11,13,22,.92),rgba(11,13,22,.6) 70%,rgba(11,13,22,0))}
-    .round{flex:none;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;
-      background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px);font-size:20px;color:#fff;
-      transition:background .15s,transform .1s}
-    .round:hover{background:rgba(255,255,255,.16)}.round:active{transform:scale(.92)}
-    .title{flex:1;min-width:0}
-    .title .name{font-size:21px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-shadow:0 2px 8px rgba(0,0,0,.6)}
-    .title .meta{display:flex;align-items:center;gap:6px;margin-top:3px;color:#aeb4c4;font-size:12px}
-    .title .meta img{height:16px}
-    .star{color:#ffcf4a}.star.off{color:rgba(255,255,255,.5)}
-    .hero{position:relative;height:var(--hero,330px);margin-top:-58px;display:flex;align-items:flex-end;justify-content:center;pointer-events:none}
-    .hero > img{max-width:124%;max-height:114%;object-fit:contain;filter:drop-shadow(0 14px 28px rgba(0,0,0,.6));
+    /* Contour brun du jeu */
+    .ol{text-shadow:1.3px 0 #1a1006,-1.3px 0 #1a1006,0 1.3px #1a1006,0 -1.3px #1a1006,1px 1px #1a1006,-1px 1px #1a1006,1px -1px #1a1006,-1px -1px #1a1006,0 2px 3px rgba(0,0,0,.5)}
+    .gold{color:#ffd24a}
+    .top{position:relative;z-index:3;display:flex;align-items:center;gap:4px;padding:6px 6px 0}
+    .back{flex:none;width:64px;height:50px;background:center/contain no-repeat;cursor:pointer;transition:transform .1s}
+    .back:active{transform:scale(.93)}
+    .plate{flex:1;min-width:0;height:56px;display:flex;flex-direction:column;justify-content:center;padding:4px 46px 6px 12px;background:left center/100% 100% no-repeat}
+    .plate .name{font-size:19px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .plate .meta{display:flex;align-items:center;gap:5px;font-size:12px;margin-top:2px}
+    .plate .meta img{height:15px}
+    .star{flex:none;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;
+      color:#ffd24a;text-shadow:0 0 2px #1a1006,0 0 2px #1a1006,0 2px 4px rgba(0,0,0,.6)}
+    .star.off{color:rgba(255,255,255,.55)}
+    .hero{position:relative;height:var(--hero,330px);display:flex;align-items:center;justify-content:center;pointer-events:none;margin-top:-6px}
+    .hero > img{max-width:122%;max-height:108%;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,.55));
       animation:float 6s ease-in-out infinite;transform-origin:50% 90%}
-    @keyframes float{0%,100%{transform:translateY(0) scale(1.06)}50%{transform:translateY(-6px) scale(1.06)}}
-    .pager{position:absolute;top:50%;margin-top:-19px;pointer-events:auto}
-    .pager.l{left:10px}.pager.r{right:10px}
-    .chipsTop{position:absolute;left:12px;bottom:10px;display:flex;gap:6px;pointer-events:auto}
-    .chip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 10px;border-radius:14px;font-size:12.5px;font-weight:600;
-      background:rgba(11,13,22,.62);border:1px solid rgba(255,255,255,.14);backdrop-filter:blur(8px);white-space:nowrap;cursor:default}
-    .chip[data-a]{cursor:pointer}
-    .chip img{height:13px}
-    .chip.gold{border-color:rgba(240,176,60,.55);color:#ffd36b}
-    .card{margin:10px 12px 0;padding:12px;border-radius:16px;background:rgba(20,23,34,.78);border:1px solid rgba(255,255,255,.08);
-      backdrop-filter:blur(14px);box-shadow:0 10px 28px rgba(0,0,0,.35)}
-    .lvl{display:flex;align-items:center;gap:10px}
-    .lvl .big{font-size:22px;line-height:1;white-space:nowrap}
-    .lvl .big small{font-size:13px;color:#aeb4c4;margin-left:3px}
-    .bar{flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,.08);overflow:hidden}
-    .bar i{display:block;height:100%;border-radius:4px;background:linear-gradient(90deg,#3fa8ff,#8be6ff);box-shadow:0 0 10px rgba(90,190,255,.6)}
-    .lvl .next{font-size:11.5px;color:#8e95a8;white-space:nowrap}
-    .stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
-    .stat{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:12px;background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06)}
-    .stat img{height:18px;flex:none}
-    .stat b{font-size:17px;font-variant-numeric:tabular-nums;margin-left:auto}
-    .stat em{font-style:normal;font-size:11.5px;color:#ffcf6b;font-weight:700;margin-left:4px}
-    .row2{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
-    .sph{display:flex;align-items:center;gap:8px;flex:1;min-width:140px;padding:8px 10px;border-radius:12px;cursor:pointer;
-      background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06);transition:background .15s}
-    .sph:hover{background:rgba(255,255,255,.09)}
-    .sph img{width:24px;height:24px;object-fit:contain}
-    .sph span{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .sph.empty span{color:#7d8496}
-    .actions{display:grid;gap:8px;margin:12px 12px 0}
-    .btn{height:58px;border-radius:14px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;
-      background:rgba(20,23,34,.82);border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(12px);transition:transform .1s,background .15s,border-color .15s}
-    .btn:hover{background:rgba(32,36,50,.9)}.btn:active{transform:scale(.95)}
-    .btn i{font-style:normal;font-size:19px;line-height:1}
-    .btn span{font-size:11.5px;font-weight:700;color:#dfe3ee}
-    .btn.on{border-color:rgba(240,176,60,.6);background:linear-gradient(180deg,rgba(240,176,60,.2),rgba(240,176,60,.06))}
-    .btn.primary{background:linear-gradient(180deg,#ffd36b,#e9a12c);border-color:#ffd36b}
-    .btn.primary span,.btn.primary i{color:#2a1a04}
-    .btn.primary.blue{background:linear-gradient(180deg,#5aa9ff,#2f6fe0);border-color:#7ab8ff}
-    .btn.primary.blue span,.btn.primary.blue i{color:#fff}
-    .btn.off{filter:grayscale(1) brightness(.6)}
-    .skills{margin:12px 12px 0;display:flex;flex-direction:column;gap:8px}
-    .skill{padding:11px 12px;border-radius:14px;background:rgba(20,23,34,.82);border:1px solid rgba(255,255,255,.08);backdrop-filter:blur(12px);cursor:pointer}
-    .skill .h{display:flex;align-items:center;gap:8px}
-    .tag{flex:none;font-size:10.5px;font-weight:800;letter-spacing:.04em;text-transform:uppercase;padding:3px 8px;border-radius:8px;color:#fff}
-    .tag.ls{background:linear-gradient(180deg,#ff8a3d,#d9531e)}
-    .tag.bb{background:linear-gradient(180deg,#4f9bff,#2560d8)}
-    .tag.sbb{background:linear-gradient(180deg,#b06bff,#6d35d8)}
-    .tag.ubb{background:linear-gradient(180deg,#ff5a7a,#c42150)}
-    .tag.es{background:linear-gradient(180deg,#3cc98a,#1f8f5d)}
-    .skill .h b{flex:1;min-width:0;font-size:15px;color:#ffd36b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .skill .h small{font-size:12px;color:#aeb4c4;font-weight:700}
-    .skill p{margin-top:6px;font-size:12.5px;color:#cfd4e2;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+    @keyframes float{0%,100%{transform:translateY(0) scale(1.05)}50%{transform:translateY(-5px) scale(1.05)}}
+    .arrow{position:absolute;top:50%;margin-top:-22px;width:30px;height:44px;pointer-events:auto;cursor:pointer;color:#ffd24a;font-size:34px;
+      display:flex;align-items:center;justify-content:center}
+    .arrow.l{left:4px}.arrow.r{right:4px}
+    /* Cadres de statut du jeu en 3 morceaux */
+    .pill{position:relative;display:flex;align-items:center;height:34px;min-width:0}
+    .pill > .fl,.pill > .fc,.pill > .fr{position:absolute;top:0;bottom:0;background-size:100% 100%;background-repeat:no-repeat}
+    .pill > .fl{left:0;width:9px}.pill > .fr{right:0;width:9px}.pill > .fc{left:9px;right:9px}
+    .pill > .in{position:relative;display:flex;align-items:center;gap:6px;width:100%;padding:0 10px}
+    .pill .lab{height:17px;flex:none}
+    .pill .val{margin-left:auto;font-size:18px;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .pill.small{height:30px}.pill.small .val{font-size:15px}.pill.small .lab{height:14px}
+    .chips{position:absolute;left:8px;right:8px;bottom:4px;display:flex;gap:6px;pointer-events:auto}
+    .chips .pill{flex:0 1 auto}
+    .block{margin:6px 8px 0;padding:8px;border-radius:10px;background:rgba(18,14,8,.55);box-shadow:inset 0 0 0 1px rgba(255,210,120,.22)}
+    .lvrow{display:flex;align-items:center;gap:8px}
+    .lvrow .pill{flex:0 0 46%}
+    .exp{position:relative;flex:1;height:22px;background:center/100% 100% no-repeat}
+    .exp i{position:absolute;inset:0;background:left center/100% 100% no-repeat;clip-path:inset(0 calc(100% - var(--p)) 0 0)}
+    .exp b{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:400}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+    .stat{display:flex;gap:4px}
+    .stat .pill:first-child{flex:1}
+    .stat .bonus{flex:0 0 64px}.stat .bonus .val{font-size:14px;margin:0 auto}
+    .spheres{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+    .sph{display:flex;align-items:center;gap:6px;flex:1;min-width:150px;cursor:pointer}
+    .sph .fr0{position:relative;width:38px;height:38px;flex:none;background:center/100% 100% no-repeat}
+    .sph .fr0 img{position:absolute;inset:5px;width:28px;height:28px;object-fit:contain}
+    .sph .fr0 i{position:absolute;inset:0;background:center/100% 100% no-repeat}
+    .sph .pill{flex:1}.sph .pill .val{margin:0;font-size:14px;overflow:hidden;text-overflow:ellipsis}
+    .actions{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin:8px 10px 0}
+    .gbtn{position:relative;aspect-ratio:140/62;background:center/100% 100% no-repeat;cursor:pointer;display:flex;align-items:center;justify-content:center;
+      transition:transform .08s,filter .1s}
+    .gbtn:active{transform:scale(.95);filter:brightness(1.15)}
+    .gbtn span{font-size:18px;padding-bottom:3px}
+    .gbtn.off{filter:grayscale(1) brightness(.62)}
+    .skills{margin:8px 6px 0;display:flex;flex-direction:column;gap:6px}
+    .skill{cursor:pointer}
+    .skill .bar{position:relative;aspect-ratio:640/94;background:left center/100% 100% no-repeat;display:flex;align-items:center;padding:10% 16px 0 5%}
+    .skill .bar.badge{aspect-ratio:auto;height:40px;padding-left:8px;gap:8px;background:rgba(18,14,8,.8);border-radius:8px 8px 0 0;box-shadow:inset 0 0 0 1px rgba(255,210,120,.25)}
+    .skill .bar.badge img{height:28px}
+    .skill .bar b{flex:1;min-width:0;font-size:17px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .skill .bar small{font-size:15px;color:#ffd24a}
+    .skill p{margin:-6px 4px 0;padding:8px 10px 9px;border-radius:0 0 10px 10px;background:rgba(12,10,8,.72);box-shadow:inset 0 0 0 1px rgba(255,210,120,.16);
+      font:12.5px/1.4 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;color:#f1ead8;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
     .skill.open p{-webkit-line-clamp:unset;display:block}
-    .skill .more{display:block;margin-top:4px;font-size:11px;color:#7d8496}
   </style>
-  <div class="wrap"><div class="bg"></div><div class="shade"></div><div class="scroll"></div></div>`;
+  <div class="wrap"><div class="bg" style="display:none"></div><div class="shade"></div><div class="scroll"></div></div>`;
   const bgEl = root.querySelector('.bg');
   const scrollEl = root.querySelector('.scroll');
   const openSkills = new Set();
   let lastKey = '';
   let lastId = null;
+
+  const ASSETS_FALLBACK = 'https://assets.rebornbf.com/assets/original/';
+  const wrapEl = root.querySelector('.wrap');
+
+  function pill(A, opts) {
+    const f = opts.up ? 'common/status_frame/status_frame_up_' : 'common/status_frame/status_frame_m_';
+    return `<div class="pill${opts.cls ? ' ' + opts.cls : ''}"${opts.attr || ''}>
+      <i class="fl" style="background-image:url('${A}${f}l.png')"></i><i class="fc" style="background-image:url('${A}${f}c.png')"></i><i class="fr" style="background-image:url('${A}${f}r.png')"></i>
+      <div class="in">${opts.icon ? `<img class="lab" src="${esc(opts.icon)}" alt="">` : ''}${opts.html || ''}</div></div>`;
+  }
 
   function render(d) {
     const key = JSON.stringify(d) + '|' + [...openSkills].join(',') + '|' + host.clientHeight;
@@ -212,45 +214,56 @@ try{
     lastKey = key;
     const keepScroll = lastId === d.id ? scrollEl.scrollTop : 0;
     lastId = d.id;
-    bgEl.style.backgroundImage = d.art ? `url("${d.art}")` : '';
+    const A = d.assets || ASSETS_FALLBACK;
+    wrapEl.style.backgroundImage = `url('${A}common/base.jpg')`;
     const fuseOk = canFuse(d), evoOk = !d.omni;
-    const rarity = d.rarityImg ? `<img src="${esc(d.rarityImg)}" alt="${esc(d.rarityText)}">` : (d.stars ? `<span style="color:#ffcf4a">${esc(d.stars)}</span>` : '');
+    const rarity = d.rarityImg ? `<img src="${esc(d.rarityImg)}" alt="${esc(d.rarityText)}">` : (d.stars ? `<span class="gold">${esc(d.stars)}</span>` : '');
     const [lvNow, lvMax] = (d.lv || '').split('/');
-    const heroH = Math.round(Math.min(400, Math.max(240, host.clientHeight * 0.5)));
+    const heroH = Math.round(Math.min(380, Math.max(230, host.clientHeight * 0.44)));
+    const val = (t, cls) => `<span class="val ol${cls ? ' ' + cls : ''}">${esc(t)}</span>`;
+    const btn = (a, img, label, off, title) => `<div class="gbtn${off ? ' off' : ''}" data-a="${a}" title="${esc(title || '')}" style="background-image:url('${A}${img}')"><span class="ol">${esc(label)}</span></div>`;
     scrollEl.innerHTML = `<div class="top">
-        <div class="round" data-a="back" title="Retour">‹</div>
-        <div class="title"><div class="name lilita">${esc(d.name)}</div>
-          <div class="meta">${d.element ? `<img src="${esc(d.element)}" alt="">` : ''}<span>${esc(d.no)}</span>${rarity}</div></div>
-        ${d.hasFavBtn ? `<div class="round star${d.fav ? '' : ' off'}" data-a="fav" title="Favori">${d.fav ? '★' : '☆'}</div>` : ''}
+        <div class="back" data-a="back" title="Retour" style="background-image:url('${A}header/header_title_btn1.png')"></div>
+        <div class="plate" style="background-image:url('${A}header/header_title_base.png')">
+          <div class="name ol">${esc(d.name)}</div>
+          <div class="meta ol">${d.element ? `<img src="${esc(d.element)}" alt="">` : ''}<span>${esc(d.no)}</span>${rarity}</div></div>
+        ${d.hasFavBtn ? `<div class="star${d.fav ? '' : ' off'}" data-a="fav" title="Favori">${d.fav ? '★' : '☆'}</div>` : ''}
       </div>
       <div class="hero" style="--hero:${heroH}px">
         ${d.art ? `<img src="${esc(d.art)}" alt="">` : ''}
-        <div class="round pager l" data-a="prev" title="Unité précédente">‹</div>
-        <div class="round pager r" data-a="next" title="Unité suivante">›</div>
-        <div class="chipsTop">
-          ${d.type ? `<span class="chip" data-a="type"><img src="${esc(d.typeIcon)}" alt="">${esc(d.type)}</span>` : ''}
-          ${d.cost ? `<span class="chip gold">Coût ${esc(d.cost)}</span>` : ''}
-          ${d.sp ? `<span class="chip">SP ${esc(d.sp)}</span>` : ''}
+        <div class="arrow l ol" data-a="prev" title="Unité précédente">◀</div>
+        <div class="arrow r ol" data-a="next" title="Unité suivante">▶</div>
+        <div class="chips">
+          ${d.type ? pill(A, { cls: 'small', icon: d.typeIcon, html: val(d.type, 'gold'), attr: ' data-a="type"' }) : ''}
+          ${d.cost ? pill(A, { cls: 'small', icon: d.costIcon, html: val(d.cost) }) : ''}
+          ${d.sp ? pill(A, { cls: 'small', icon: d.spIcon, html: val(d.sp) }) : ''}
         </div>
       </div>
-      <div class="card">
-        <div class="lvl"><div class="big lilita">Lv ${esc((lvNow || '').trim())}<small>/ ${esc((lvMax || '').trim())}</small></div>
-          <div class="bar"><i style="width:${Math.max(0, Math.min(100, d.exp))}%"></i></div>
-          <div class="next">${d.next && !/^-+$/.test(d.next) ? 'Suivant ' + esc(d.next) : 'MAX'}</div></div>
-        <div class="stats">${d.stats.map((s) => `<div class="stat"><img src="${esc(s.icon)}" alt=""><b>${esc(s.value)}</b>${s.bonus ? `<em>+${esc(s.bonus)}</em>` : ''}</div>`).join('')}</div>
-        ${d.spheres.length ? `<div class="row2">${d.spheres.map((s) => `<div class="sph${/^(vide|empty|-*)$/i.test(s.name) ? ' empty' : ''}" data-a="sphere" data-i="${s.i}">${s.icon ? `<img src="${esc(s.icon)}" alt="">` : ''}<span>${esc(s.name || 'Vide')}</span></div>`).join('')}</div>` : ''}
+      <div class="block">
+        <div class="lvrow">
+          ${pill(A, { icon: d.lvIcon, html: val((lvNow || '').trim() + ' / ' + (lvMax || '').trim()) })}
+          <div class="exp" style="background-image:url('${A}unit_mix/unit_mix_bar_base.png');--p:${Math.max(0, Math.min(100, d.exp))}%">
+            <i style="background-image:url('${A}unit_mix/unit_mix_bar_gauge.png')"></i>
+            <b class="ol">${d.next && !/^-+$/.test(d.next) ? esc(d.next) : 'MAX'}</b></div>
+        </div>
+        <div class="stats">${d.stats.map((s) => `<div class="stat">${pill(A, { icon: s.icon, html: val(s.value) })}${s.bonus ? pill(A, { up: true, cls: 'bonus', html: val('+' + s.bonus, 'gold') }) : ''}</div>`).join('')}</div>
+        ${d.spheres.length ? `<div class="spheres">${d.spheres.map((s) => `<div class="sph" data-a="sphere" data-i="${s.i}">
+            <div class="fr0" style="background-image:url('${A}common/skill_frame_bg.png')">${s.icon ? `<img src="${esc(s.icon)}" alt="">` : ''}<i style="background-image:url('${A}common/skill_frame_0.png')"></i></div>
+            ${pill(A, { html: val(s.name || 'Vide') })}</div>`).join('')}</div>` : ''}
       </div>
       <div class="actions">
-        <div class="btn primary${fuseOk ? '' : ' off'}" data-a="fusion" title="${fuseOk ? '' : 'Niveau et compétences au maximum'}"><i>⬆</i><span>Améliorer</span></div>
-        <div class="btn primary blue${evoOk ? '' : ' off'}" data-a="evolve" title="${evoOk ? '' : 'Forme finale'}"><i>✦</i><span>Évoluer</span></div>
-        ${d.hasHelper ? `<div class="btn${d.helper ? ' on' : ''}" data-a="helper"><i>🤝</i><span>${d.helper ? 'Aide ✓' : 'Aide'}</span></div>` : ''}
-        ${d.switchBtn ? `<div class="btn" data-a="switch"><i>⇄</i><span>Changer</span></div>` : ''}
+        ${btn('fusion', 'common/button/sub_ss_btn1.png', 'Améliorer', !fuseOk, fuseOk ? '' : 'Niveau et compétences au maximum')}
+        ${btn('evolve', 'common/button/sub_ss_btn1.png', 'Évoluer', !evoOk, evoOk ? '' : 'Forme finale')}
+        ${d.hasHelper ? btn('helper', 'common/button/sub_ss_btn1.png', d.helper ? 'Aide ✓' : 'Aide') : ''}
+        ${d.switchBtn ? btn('switch', 'common/button/sub_ss_btn1.png', 'Changer') : ''}
       </div>
-      <div class="skills">${d.skills.map((s) => `<div class="skill${openSkills.has(s.i) ? ' open' : ''}" data-a="skill" data-i="${s.i}">
-          <div class="h"><span class="tag ${s.kind[1]}">${esc(s.kind[0])}</span><b class="lilita">${esc(s.name)}</b>${s.level ? `<small>${esc(s.level)}</small>` : ''}</div>
-          <p>${esc(s.text)}</p>${s.text.length > 120 ? `<span class="more">${openSkills.has(s.i) ? 'Réduire' : 'Tout afficher'}</span>` : ''}</div>`).join('')}</div>`;
-    const n = scrollEl.querySelectorAll('.actions .btn').length;
-    scrollEl.querySelector('.actions').style.gridTemplateColumns = `repeat(${n},1fr)`;
+      <div class="skills">${d.skills.map((s) => {
+        const wide = /\/(leader|bb)\.png/.test(s.label || '');
+        const head = wide
+          ? `<div class="bar" style="background-image:url('${esc(s.label)}')"><b class="ol gold">${esc(s.name)}</b>${s.level ? `<small class="ol">${esc(s.level)}</small>` : ''}</div>`
+          : `<div class="bar badge">${s.label ? `<img src="${esc(s.label)}" alt="">` : ''}<b class="ol gold">${esc(s.name)}</b>${s.level ? `<small class="ol">${esc(s.level)}</small>` : ''}</div>`;
+        return `<div class="skill${openSkills.has(s.i) ? ' open' : ''}" data-a="skill" data-i="${s.i}">${head}<p>${esc(s.text)}</p></div>`;
+      }).join('')}</div>`;
     if (keepScroll) scrollEl.scrollTop = keepScroll;
   }
 
