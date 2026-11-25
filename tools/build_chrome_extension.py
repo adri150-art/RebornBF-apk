@@ -16,7 +16,7 @@ PARTS = [
     ('unitplus.js', 'unitplus', 'S.opt.remaster', False),
     ('gameinfo.js', 'gameinfo', 'S.opt.infos', False),
     ('hd.js', 'hd', 'S.opt.hd', False),
-    ('combat.js', 'combat', '(S.opt.always_x2||S.opt.always_auto)', False),
+    ('combat.js', 'combat', '(S.opt.always_x2||S.opt.always_auto||S.opt.turbo15||S.opt.turbo2)', False),
     ('farm.js', 'farm', 'S.bots.farm', False),
     ('aventure.js', 'aventure', 'S.bots.aventure', True),
 ]
@@ -27,7 +27,7 @@ NATIVE = r"""// Pont entre l'interface de l'appli et Chrome : réglages enregist
   if (window.top !== window || window.rbfNative) return;
   const KEY = 'rbf_settings';
   const DEF = { bots: { farm: false, aventure: false }, farm_target: 300,
-    opt: { antipause: true, appfeel: true, remaster: true, infos: true, hd: false, always_x2: true, always_auto: false, notifications: true },
+    opt: { antipause: true, appfeel: true, remaster: true, infos: true, hd: false, always_x2: true, always_auto: false, turbo15: false, turbo2: false, notifications: true },
     custom: [] };
   function load() {
     let s = {};
@@ -100,7 +100,7 @@ def main():
     for src, name, cond, start in PARTS:
         code = open(os.path.join(SCRIPTS, src), encoding='utf-8').read()
         if src == 'combat.js':
-            code = code.replace('__AUTO__', '!!window.__rbfSettings.opt.always_auto').replace('__X2__', '!!window.__rbfSettings.opt.always_x2')
+            code = code.replace('__AUTO__', '!!window.__rbfSettings.opt.always_auto').replace('__X2__', '!!window.__rbfSettings.opt.always_x2').replace('__TURBO__', '(window.__rbfSettings.opt.turbo2?2:window.__rbfSettings.opt.turbo15?1.5:1)')
         fn = name + '.js'
         open(os.path.join(OUT, fn), 'w', encoding='utf-8').write(wrap(code, cond, start, name))
         files.append(fn)

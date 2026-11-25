@@ -538,8 +538,9 @@ public class MainActivity extends Activity {
         if (opt("infos", true)) sb.append(wrap(asset("gameinfo.js"), false, "infos du jeu"));
         if (opt("hd", false)) sb.append(wrap(asset("hd.js"), false, "filtre HD"));
         boolean auto = opt("always_auto", false), x2 = opt("always_x2", true);
-        if (auto || x2) {
-            String c = asset("combat.js").replace("__AUTO__", String.valueOf(auto)).replace("__X2__", String.valueOf(x2));
+        String turbo = opt("turbo2", false) ? "2" : opt("turbo15", false) ? "1.5" : "1";
+        if (auto || x2 || !"1".equals(turbo)) {
+            String c = asset("combat.js").replace("__AUTO__", String.valueOf(auto)).replace("__X2__", String.valueOf(x2)).replace("__TURBO__", turbo);
             sb.append(wrap(c, false, "combat"));
         }
         for (String[] b : BOTS) {
@@ -567,8 +568,8 @@ public class MainActivity extends Activity {
     }
 
     private static final String[] OPTS = {"remaster", "infos", "appfeel", "haptic", "antipause", "screen_on", "fullscreen",
-            "format169", "hd", "always_x2", "always_auto", "notifications"};
-    private static final boolean[] OPT_DEF = {true, true, true, true, true, true, true, true, false, true, false, true};
+            "format169", "hd", "always_x2", "always_auto", "notifications", "turbo15", "turbo2"};
+    private static final boolean[] OPT_DEF = {true, true, true, true, true, true, true, true, false, true, false, true, false, false};
 
     /** Réglages au format de l'interface (bots, options, scripts). */
     private JSONObject settingsJson() {

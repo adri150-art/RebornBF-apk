@@ -1,7 +1,7 @@
-(function(){if(window.top!==window)return;var S=window.__rbfSettings;if(!S||!((S.opt.always_x2||S.opt.always_auto)))return;
+(function(){if(window.top!==window)return;var S=window.__rbfSettings;if(!S||!((S.opt.always_x2||S.opt.always_auto||S.opt.turbo15||S.opt.turbo2)))return;
 (function __rbfRun(){if(document.readyState==='loading'||!document.body){document.addEventListener('DOMContentLoaded',__rbfRun,{once:true});return;}
 try{
-// Combat : remet AUTO et/ou x2 tout seul à chaque combat (réglable dans l'appli).
+// Combat : remet AUTO et/ou x2 tout seul à chaque combat, et « Turbo » accélère encore le combat (réglable dans l'appli).
 (function () {
   'use strict';
   if (window.__rbfCombat) return;
@@ -9,6 +9,7 @@ try{
 
   const WANT_AUTO = !!window.__rbfSettings.opt.always_auto;
   const WANT_X2 = !!window.__rbfSettings.opt.always_x2;
+  const TURBO = (window.__rbfSettings.opt.turbo2?2:window.__rbfSettings.opt.turbo15?1.5:1); // 1 = vitesse normale du jeu, 1.5 ou 2 = encore plus vite (en plus du x2 du jeu)
   const HIT_AUTO = { x: 506, y: 494 };   // boutons du combat (coordonnées du jeu)
   const HIT_SPEED = { x: 582, y: 497 };
 
@@ -23,8 +24,20 @@ try{
     P.__rbfCombatHook = true;
   }
 
+  // Turbo : on fait avancer le temps du jeu plus vite, seulement pendant les combats.
+  // Tout suit le même rythme (animations, attaques, minuteries), donc le combat reste identique, juste plus rapide.
+  function turbo() {
+    if (TURBO <= 1 || !game || !game.loop || game.loop.__rbfTurbo || typeof game.loop.callback !== 'function') return;
+    const cb = game.loop.callback;
+    game.loop.callback = function (time, delta) {
+      return cb.call(this, time, location.pathname.startsWith('/battle') ? Math.min(delta * TURBO, 100) : delta);
+    };
+    game.loop.__rbfTurbo = true;
+  }
+
   setInterval(() => {
     hook();
+    turbo();
     if (!location.pathname.startsWith('/battle')) return;
     let s = null;
     try {

@@ -228,6 +228,8 @@ try{
     h += '</div>';
     h += '<div class="sec">Combat</div><div class="chips">';
     h += chip('always_x2', '⏩', 'Toujours x2', S.opt.always_x2) + chip('always_auto', '🤖', 'Toujours AUTO', S.opt.always_auto);
+    h += '</div><div class="sec">Turbo<em>en plus du x2 du jeu</em></div><div class="chips">';
+    h += chip('turbo_off', '🐢', 'Normal', !S.opt.turbo15 && !S.opt.turbo2) + chip('turbo15', '🚀', 'x1,5', S.opt.turbo15) + chip('turbo2', '⚡', 'x2', S.opt.turbo2);
     h += '</div>';
     h += `<div class="sec">Mes scripts<em>${ANDROID ? 'appui long' : 'clic droit'} pour supprimer</em></div><div class="card">`;
     if (!S.custom.length) h += '<p class="empty">Aucun script. Ajoute ton bot d\'arène ou un autre script Tampermonkey.</p>';
@@ -271,6 +273,13 @@ try{
         c.classList.toggle('on', !!S.bots[k]);
         c.querySelector('.pill').textContent = S.bots[k] ? 'Actif' : 'Inactif';
       });
+      return;
+    }
+    if (kind === 'opt' && /^turbo/.test(key)) {
+      // Un seul niveau de turbo à la fois
+      S.opt.turbo15 = key === 'turbo15';
+      S.opt.turbo2 = key === 'turbo2';
+      el.parentElement.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === el));
       return;
     }
     const target = el.classList.contains('chip') ? el : el.querySelector('.sw');
