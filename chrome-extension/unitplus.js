@@ -28,18 +28,10 @@ try{
     /* Compétences : ombre douce */
     [class*="unit-info-module__"][class*="__skillRow"]{border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)}
 
-    /* Barre d'actions ajoutée par l'appli */
-    #rbf-unit-actions{position:fixed;display:flex;height:50px;align-items:center;gap:8px;z-index:5;
-      padding:6px;border-radius:18px;background:rgba(8,10,20,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-      border:1px solid rgba(255,214,120,.25);box-shadow:0 8px 20px rgba(0,0,0,.45)}
-    #rbf-unit-actions button{flex:1;min-width:0;height:38px;border-radius:13px;font-size:13px!important;white-space:nowrap;border:1px solid rgba(255,214,120,.55);cursor:pointer;
-      font:800 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.3px;color:#1b1206;
-      background:linear-gradient(180deg,#ffe08a 0%,#f2b33d 55%,#d98c1c 100%);
-      box-shadow:0 6px 14px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.6);text-shadow:0 1px 0 rgba(255,255,255,.35);
-      transition:transform .1s ease,filter .1s ease;-webkit-tap-highlight-color:transparent}
-    #rbf-unit-actions button.alt{color:#eaf3ff;text-shadow:0 1px 2px rgba(0,0,0,.6);border-color:rgba(140,200,255,.55);
-      background:linear-gradient(180deg,#5aa9ff 0%,#2f6fe0 60%,#2149a8 100%)}
-    #rbf-unit-actions button:active{transform:scale(.96);filter:brightness(1.12)}
+    /* Boutons Améliorer / Évoluer : copies des boutons du jeu */
+    #rbf-unit-actions{position:fixed;z-index:30;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
+    #rbf-unit-actions > button{position:relative!important;inset:auto!important;margin:0!important;transform:none;flex:none}
+    #rbf-unit-actions > button.rbf-off{filter:grayscale(1) brightness(.62)!important;cursor:not-allowed}
     #rbf-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:2147483600;padding:10px 16px;border-radius:12px;
       background:rgba(10,12,22,.92);border:1px solid rgba(255,206,110,.35);color:#f2f4fa;font:600 13px system-ui,sans-serif;
       box-shadow:0 8px 20px rgba(0,0,0,.5);pointer-events:none;transition:opacity .3s}
@@ -126,50 +118,116 @@ try{
     }
   }
 
-  // ───────── Barre d'actions sur la fiche d'unité ─────────
+  // ───────── Boutons Améliorer / Évoluer sur la fiche d'unité ─────────
+  // Copies du bouton « Changer / Switch » du jeu (même cadre, même image), rangées dans la colonne
+  // de droite sous « Définir comme Aide ». Grisés quand l'action n'apporte plus rien.
+
+  const rightCol = () => $('[class*="unit-info-module__"][class*="__right"]');
+  const visibleButtons = (root) => root ? [...root.querySelectorAll('button')].filter((b) => b.getBoundingClientRect().width > 0 && !b.closest('#rbf-unit-actions')) : [];
+
+  function gameButtons() {
+    const r = rightCol();
+    const btns = visibleButtons(r).sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
+    if (!btns.length) return null;
+    const model = btns[btns.length - 1];                         // le plus bas : Changer / Switch
+    const helper = $('[class*="unit-info-module__"][class*="__helperButton"]') ||
+      $('[class*="unit-info-module__"][class*="__toggles"]') || btns[0]; // sous « Définir comme Aide »
+    return { model, helper };
+  }
+
+  function cloneButton(model, label) {
+    const b = model.cloneNode(true);
+    b.querySelectorAll('[id]').forEach((e) => e.removeAttribute('id'));
+    b.removeAttribute('id');
+    b.type = 'button';
+    b.setAttribute('aria-label', label);
+    const tw = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
+    let first = null;
+    while (tw.nextNode()) {
+      const n = tw.currentNode;
+      if (!n.nodeValue.trim()) continue;
+      if (!first) { first = n; n.nodeValue = label; } else n.nodeValue = '';
+    }
+    if (!first) b.textContent = label;
+    return b;
+  }
+
+  // Évolution impossible : forme finale (marque « Omni » sur la fiche)
+  function canEvolve() {
+    return !$('[class*="unit-info-module__"] [class*="rarity-mark-module__"][class*="__omni"]') &&
+      !$('[class*="unit-info-module__"][class*="__titleRow"] [class*="__omni"]');
+  }
+
+  // Fusion inutile : niveau au maximum et compétences au niveau 10
+  function canFuse() {
+    const rows = $$('[class*="unit-info-module__"][class*="__statRow"]');
+    let maxed = false;
+    for (const r of rows) {
+      const m = (r.innerText || r.textContent || '').match(/(\d+)\s*\/\s*(\d+)/);
+      if (m && /lv/i.test(r.innerText || r.textContent || '')) { maxed = +m[1] >= +m[2]; break; }
+    }
+    if (!maxed) return true;
+    const levels = $$('[class*="unit-info-module__"][class*="__skillLevel"]').map((e) => parseInt((e.textContent || '').replace(/\D/g, ''), 10)).filter((n) => !isNaN(n));
+    return levels.some((n) => n < 10);
+  }
+
+  function setState(btn, ok, why) {
+    btn.disabled = false; // on garde le clic pour expliquer pourquoi c'est grisé
+    btn.classList.toggle('rbf-off', !ok);
+    btn.dataset.why = ok ? '' : why;
+    btn.title = ok ? '' : why;
+  }
+
   function addActions() {
     const old = $('#rbf-unit-actions');
     if (location.pathname !== '/units/info') { if (old) old.remove(); return; }
-    if (old) { place(old); return; }
-    const body = $('[class*="unit-info-module__"][class*="__body"]');
-    if (!body) return;
-    // Le bouton « Enhancements » du jeu ne fait rien : on le branche sur l'amélioration
+    // Le bouton « Enhancements » du jeu ne fait rien : on le branche sur la fusion
     $$('[class*="unit-info-module__"][class*="__action"]').forEach((el) => {
       if (el.dataset.rbfHooked || !/enhanc|am[ée]lior/i.test(el.innerText || el.textContent || '')) return;
       el.dataset.rbfHooked = '1';
       el.style.cursor = 'pointer';
       el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); start('fusion'); }, true);
     });
-    const bar = document.createElement('div');
-    bar.id = 'rbf-unit-actions';
-    bar.innerHTML = '<button type="button" data-k="fusion">⬆ Améliorer</button><button type="button" class="alt" data-k="evolve">✦ Évoluer</button>';
-    bar.addEventListener('click', (e) => {
-      const b = e.target.closest('button[data-k]');
-      if (b) { e.preventDefault(); e.stopPropagation(); start(b.dataset.k); }
-    });
-    document.body.appendChild(bar);
-    place(bar);
+    const g = gameButtons();
+    if (!g) { if (old) old.style.display = 'none'; return; }
+    let box = old;
+    if (!box || box.dataset.unit !== currentUnitId()) {
+      if (box) box.remove();
+      box = document.createElement('div');
+      box.id = 'rbf-unit-actions';
+      box.dataset.unit = currentUnitId() || '';
+      const fuse = cloneButton(g.model, 'Améliorer');
+      const evo = cloneButton(g.model, 'Évoluer');
+      fuse.dataset.k = 'fusion';
+      evo.dataset.k = 'evolve';
+      box.append(fuse, evo);
+      box.addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-k]');
+        if (!b) return;
+        e.preventDefault(); e.stopPropagation();
+        if (b.classList.contains('rbf-off')) { toast(b.dataset.why); return; }
+        start(b.dataset.k);
+      }, true);
+      document.body.appendChild(box);
+    }
+    const [fuse, evo] = box.children;
+    setState(fuse, canFuse(), 'Niveau et compétences déjà au maximum');
+    setState(evo, canEvolve(), 'Cette unité est à sa forme finale');
+    place(box, g);
   }
 
-  // Place la barre en bas de l'image de l'unité, sans rien changer à la mise en page du jeu
-  function place(bar) {
-    const right = $('[class*="unit-info-module__"][class*="__right"]');
-    const left = $('[class*="unit-info-module__"][class*="__left"]');
-    const sw = right && [...right.querySelectorAll('button')].filter((b) => b.getBoundingClientRect().width > 0)
-      .sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top)[0]; // le plus bas : Switch / Changer
-    if (!sw || !left) { bar.style.display = 'none'; return; }
-    const s = sw.getBoundingClientRect();
-    const l = left.getBoundingClientRect();
-    const x0 = Math.round(l.right + 6), x1 = Math.round(s.left - 6);
-    if (x1 - x0 < 150) { bar.style.display = 'none'; return; }
-    const h = 50;
-    bar.style.display = 'flex';
-    bar.style.left = x0 + 'px';
-    bar.style.width = (x1 - x0) + 'px';
-    bar.style.top = Math.round(s.top + s.height / 2 - h / 2) + 'px';
+  function place(box, g) {
+    const m = g.model.getBoundingClientRect();
+    const h = g.helper.getBoundingClientRect();
+    if (!m.width || !h.width) { box.style.display = 'none'; return; }
+    box.style.display = 'flex';
+    box.style.width = Math.round(m.width) + 'px';
+    box.style.left = Math.round(h.right - m.width) + 'px';
+    box.style.top = Math.round(h.bottom + 10) + 'px';
+    [...box.children].forEach((b) => { b.style.width = Math.round(m.width) + 'px'; b.style.height = Math.round(m.height) + 'px'; });
   }
 
-  window.addEventListener('resize', () => { const b = $('#rbf-unit-actions'); if (b) place(b); });
+  window.addEventListener('resize', () => { const b = $('#rbf-unit-actions'); const g = gameButtons(); if (b && g) place(b, g); });
   setInterval(() => {
     if (!location.pathname.startsWith('/units')) { const b = $('#rbf-unit-actions'); if (b) b.remove(); return; }
     learnUnitMenu();
