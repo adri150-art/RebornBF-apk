@@ -128,14 +128,16 @@
     /* Contour brun du jeu */
     .ol{text-shadow:1.3px 0 #1a1006,-1.3px 0 #1a1006,0 1.3px #1a1006,0 -1.3px #1a1006,1px 1px #1a1006,-1px 1px #1a1006,1px -1px #1a1006,-1px -1px #1a1006,0 2px 3px rgba(0,0,0,.5)}
     .gold{color:#ffd24a}
-    .top{flex:none;position:relative;z-index:3;display:flex;align-items:center;gap:4px}
-    .back{flex:none;width:58px;height:45px;background:center/contain no-repeat;cursor:pointer;transition:transform .1s}
+    .top{flex:none;position:relative;z-index:3;display:flex;align-items:center;height:58px}
+    .back{flex:none;position:relative;z-index:1;width:calc((100% - 40px) * .25 - 4px);max-width:78px;height:48px;margin-left:2px;background:center/contain no-repeat;cursor:pointer;transition:transform .1s}
     .back:active{transform:scale(.93)}
-    .plate{flex:1;min-width:0;height:50px;display:flex;flex-direction:column;justify-content:center;padding:2px 44px 5px 11px;background:left center/100% 100% no-repeat}
-    .plate .name{font-size:18px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .plate .meta{display:flex;align-items:center;gap:5px;font-size:11px;margin-top:2px}
+    /* Plaque du jeu : sa partie gauche passe sous le bouton Back, le nom va dans la zone sombre */
+    .plate{position:absolute;left:0;top:0;right:40px;height:58px;display:flex;flex-direction:column;justify-content:center;gap:3px;
+      padding:3px calc((100% - 40px) * .13) 5px calc((100% - 40px) * .25 + 8px);background:left center/100% 100% no-repeat}
+    .plate .name{font-size:18px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .plate .meta{display:flex;align-items:center;gap:5px;font-size:12px;line-height:1}
     .plate .meta img{height:14px}
-    .star{flex:none;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;
+    .star{flex:none;margin-left:auto;position:relative;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;
       color:#ffd24a;text-shadow:0 0 2px #1a1006,0 0 2px #1a1006,0 2px 4px rgba(0,0,0,.6);transition:transform .1s}
     .star:active{transform:scale(.85)} .star.off{color:rgba(255,255,255,.55)}
     /* L'illustration prend toute la place restante : jamais de défilement */
@@ -165,7 +167,9 @@
     .stats{display:grid;grid-template-columns:1fr 1fr;gap:5px}
     .stat{display:flex;gap:3px;min-width:0}
     .stat .pill:first-child{flex:1}
-    .stat .bonus{flex:0 0 54px}.stat .bonus .val{font-size:12.5px;margin:0 auto}
+    /* Cadre bonus du jeu : son corps commence à 12/45 de la hauteur (petit onglet en haut à gauche) */
+    .stat .bonus{flex:0 0 auto;min-width:56px}.stat .bonus > .in{justify-content:center;padding:calc(29px * 12 / 45) 7px 1px 8px}
+    .stat .bonus .val{font-size:13px;margin:0}
     .spheres{display:flex;gap:5px}
     .sph{display:flex;align-items:center;gap:5px;flex:1;min-width:0;cursor:pointer}
     .sph .fr0{position:relative;width:31px;height:31px;flex:none;background:center/100% 100% no-repeat}
@@ -265,7 +269,7 @@
           <div class="plate" style="background-image:url('${A}header/header_title_base.png')">
             <div class="name ol">${esc(d.name)}</div>
             <div class="meta ol">${d.element ? `<img src="${esc(d.element)}" alt="">` : ''}<span>${esc(d.no)}</span>${rarity}</div></div>
-          ${d.hasFavBtn ? `<div class="star${d.fav ? '' : ' off'}" data-a="fav" title="Favori">${d.fav ? '★' : '☆'}</div>` : ''}
+          ${d.hasFavBtn ? `<div class="star${d.fav ? '' : ' off'}" data-a="fav" title="Favori">${d.fav ? '★' : '☆'}</div>` : '<div class="star" style="visibility:hidden"></div>'}
         </div>
         <div class="hero">
           ${d.art ? `<img src="${esc(d.art)}" alt="">` : ''}
