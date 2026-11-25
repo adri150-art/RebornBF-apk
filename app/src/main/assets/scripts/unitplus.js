@@ -1,5 +1,5 @@
-// Fiche d'unité « remaster » : barre d'actions Améliorer / Évoluer directement sur la fiche,
-// textes des compétences lisibles en entier, cadres plus modernes.
+// Fiche d'unité « remaster » : colonne de boutons Favori / Aide / Améliorer / Évoluer au style du jeu,
+// grisés quand l'action est impossible, ombres douces sur les stats et les compétences.
 (function () {
   'use strict';
   if (window.__rbfUnitPlus) return;
@@ -25,9 +25,13 @@
     /* Compétences : ombre douce */
     [class*="unit-info-module__"][class*="__skillRow"]{border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)}
 
-    /* Boutons Améliorer / Évoluer : copies des boutons du jeu */
-    #rbf-unit-actions{position:fixed;z-index:30;display:flex;flex-direction:column;gap:8px;align-items:flex-end}
-    #rbf-unit-actions > button{position:relative!important;inset:auto!important;margin:0!important;transform:none;flex:none}
+    /* Colonne de boutons : copies du bouton bleu du jeu, tous de la même taille */
+    #rbf-unit-actions{position:fixed;z-index:30;display:flex;flex-direction:column;gap:6px;width:124px}
+    #rbf-unit-actions > button{position:relative!important;inset:auto!important;margin:0!important;flex:none;width:124px!important;height:42px!important}
+    /* Les images du cadre gardent sinon la position calculée pour le petit bouton d'origine */
+    #rbf-unit-actions > button img{inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important}
+    #rbf-unit-actions .rbf-cap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:0 6px;
+      color:#fff;font-size:17px;line-height:1;white-space:nowrap;letter-spacing:.3px;pointer-events:none}
     #rbf-unit-actions > button.rbf-off{filter:grayscale(1) brightness(.62)!important;cursor:not-allowed}
     #rbf-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:2147483600;padding:10px 16px;border-radius:12px;
       background:rgba(10,12,22,.92);border:1px solid rgba(255,206,110,.35);color:#f2f4fa;font:600 13px system-ui,sans-serif;
@@ -115,38 +119,35 @@
     }
   }
 
-  // ───────── Boutons Améliorer / Évoluer sur la fiche d'unité ─────────
-  // Copies du bouton « Changer / Switch » du jeu (même cadre, même image), rangées dans la colonne
-  // de droite sous « Définir comme Aide ». Grisés quand l'action n'apporte plus rien.
+  // ───────── Colonne de boutons de la fiche d'unité ─────────
+  // Quatre boutons de même taille, faits à partir du bouton bleu du jeu (cadre et police d'origine) :
+  // Favori et Aide (qui actionnent les boutons du jeu), Améliorer et Évoluer. Présents sur toutes les unités.
 
-  const rightCol = () => $('[class*="unit-info-module__"][class*="__right"]');
-  const visibleButtons = (root) => root ? [...root.querySelectorAll('button')].filter((b) => b.getBoundingClientRect().width > 0 && !b.closest('#rbf-unit-actions')) : [];
+  const helperBtn = () => $('[class*="unit-info-module__"][class*="__helperButton"]');
+  const favoriteBtn = () => $$('[class*="unit-info-module__"][class*="__favoriteButton"]').find((b) => !/__helperButton/.test(b.className));
+  const togglesBox = () => $('[class*="unit-info-module__"][class*="__toggles"]');
 
-  function gameButtons() {
-    const r = rightCol();
-    const btns = visibleButtons(r).sort((a, b) => a.getBoundingClientRect().top - b.getBoundingClientRect().top);
-    if (!btns.length) return null;
-    const model = btns[btns.length - 1];                         // le plus bas : Changer / Switch
-    const helper = $('[class*="unit-info-module__"][class*="__helperButton"]') ||
-      $('[class*="unit-info-module__"][class*="__toggles"]') || btns[0]; // sous « Définir comme Aide »
-    return { model, helper };
-  }
-
-  function cloneButton(model, label) {
+  function makeButton(model, label, key) {
     const b = model.cloneNode(true);
     b.querySelectorAll('[id]').forEach((e) => e.removeAttribute('id'));
-    b.removeAttribute('id');
+    ['id', 'aria-pressed', 'aria-haspopup'].forEach((k) => b.removeAttribute(k));
     b.type = 'button';
-    b.setAttribute('aria-label', label);
-    const tw = document.createTreeWalker(b, NodeFilter.SHOW_TEXT);
-    let first = null;
-    while (tw.nextNode()) {
-      const n = tw.currentNode;
-      if (!n.nodeValue.trim()) continue;
-      if (!first) { first = n; n.nodeValue = label; } else n.nodeValue = '';
-    }
-    if (!first) b.textContent = label;
+    b.dataset.k = key;
+    let cap = b.querySelector('[class*="__caption"]');
+    if (!cap) { cap = document.createElement('span'); b.appendChild(cap); }
+    cap.removeAttribute('data-fit');
+    cap.className = 'rbf-cap';
+    const src = model.querySelector('[class*="__caption"]');
+    const cs = src ? getComputedStyle(src) : null;
+    if (cs) { cap.style.fontFamily = cs.fontFamily; cap.style.textShadow = cs.textShadow; }
+    cap.textContent = label;
     return b;
+  }
+
+  function setLabel(btn, label) {
+    const cap = btn.querySelector('.rbf-cap');
+    if (cap && cap.textContent !== label) cap.textContent = label;
+    btn.setAttribute('aria-label', label);
   }
 
   // Évolution impossible : forme finale (marque « Omni » sur la fiche)
@@ -184,46 +185,50 @@
       el.style.cursor = 'pointer';
       el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); start('fusion'); }, true);
     });
-    const g = gameButtons();
-    if (!g) { if (old) old.style.display = 'none'; return; }
+    const helper = helperBtn();
+    const toggles = togglesBox();
+    if (!helper || !toggles) { if (old) old.style.display = 'none'; return; }
     let box = old;
     if (!box || box.dataset.unit !== currentUnitId()) {
       if (box) box.remove();
       box = document.createElement('div');
       box.id = 'rbf-unit-actions';
       box.dataset.unit = currentUnitId() || '';
-      const fuse = cloneButton(g.model, 'Améliorer');
-      const evo = cloneButton(g.model, 'Évoluer');
-      fuse.dataset.k = 'fusion';
-      evo.dataset.k = 'evolve';
-      box.append(fuse, evo);
+      box.append(makeButton(helper, '★ Favori', 'favorite'), makeButton(helper, 'Aide', 'helper'),
+        makeButton(helper, 'Améliorer', 'fusion'), makeButton(helper, 'Évoluer', 'evolve'));
       box.addEventListener('click', (e) => {
         const b = e.target.closest('button[data-k]');
         if (!b) return;
         e.preventDefault(); e.stopPropagation();
         if (b.classList.contains('rbf-off')) { toast(b.dataset.why); return; }
-        start(b.dataset.k);
+        const k = b.dataset.k;
+        if (k === 'favorite') { const f = favoriteBtn(); if (f) f.click(); }
+        else if (k === 'helper') { const h = helperBtn(); if (h) h.click(); }
+        else start(k);
       }, true);
       document.body.appendChild(box);
     }
-    const [fuse, evo] = box.children;
+    toggles.style.visibility = 'hidden'; // les petits boutons d'origine restent là pour être actionnés
+    const [fav, help, fuse, evo] = box.children;
+    const f = favoriteBtn();
+    const isFav = f && /retir|remove|enlever/i.test((f.getAttribute('aria-label') || '') + ' ' + (f.innerText || ''));
+    setLabel(fav, isFav ? 'Retirer ★' : '★ Favori');
+    setLabel(help, helper.getAttribute('aria-pressed') === 'true' ? 'Aide ✓' : 'Aide');
+    fav.style.display = f ? '' : 'none';
     setState(fuse, canFuse(), 'Niveau et compétences déjà au maximum');
     setState(evo, canEvolve(), 'Cette unité est à sa forme finale');
-    place(box, g);
+    place(box, toggles);
   }
 
-  function place(box, g) {
-    const m = g.model.getBoundingClientRect();
-    const h = g.helper.getBoundingClientRect();
-    if (!m.width || !h.width) { box.style.display = 'none'; return; }
+  function place(box, toggles) {
+    const t = toggles.getBoundingClientRect();
+    if (!t.width) { box.style.display = 'none'; return; }
     box.style.display = 'flex';
-    box.style.width = Math.round(m.width) + 'px';
-    box.style.left = Math.round(h.right - m.width) + 'px';
-    box.style.top = Math.round(h.bottom + 10) + 'px';
-    [...box.children].forEach((b) => { b.style.width = Math.round(m.width) + 'px'; b.style.height = Math.round(m.height) + 'px'; });
+    box.style.left = Math.round(t.right - 124) + 'px';
+    box.style.top = Math.round(t.top) + 'px';
   }
 
-  window.addEventListener('resize', () => { const b = $('#rbf-unit-actions'); const g = gameButtons(); if (b && g) place(b, g); });
+  window.addEventListener('resize', () => { const b = $('#rbf-unit-actions'); const t = togglesBox(); if (b && t) place(b, t); });
   setInterval(() => {
     if (!location.pathname.startsWith('/units')) { const b = $('#rbf-unit-actions'); if (b) b.remove(); return; }
     learnUnitMenu();
