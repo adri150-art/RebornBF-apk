@@ -87,43 +87,84 @@
   }, 500);
 })();
 
-// « Back » du jeu : revient vraiment à la page précédente (le jeu renvoie sinon vers une page fixe,
-// par exemple la liste des unités). On garde la liste des pages visitées dans l'onglet.
+// « Back » du jeu : retour logique, sans boucle.
+// On garde le fil des pages visitées (comme l'historique du navigateur). Back ramène à la page d'où l'on
+// venait la PREMIÈRE fois qu'on est arrivé sur l'écran actuel, en sautant les écrans d'action
+// (fusion, évolution, combat, lancement de quête). Exemple : liste → fiche → fusion → fiche → Back = liste.
 (function () {
   'use strict';
   if (window.__rbfBack) return;
   window.__rbfBack = true;
-  const KEY = 'rbf_hist';
-  const here = () => location.pathname + location.search;
-  const load = () => { try { return JSON.parse(sessionStorage.getItem(KEY)) || []; } catch (e) { return []; } };
-  const save = (h) => { try { sessionStorage.setItem(KEY, JSON.stringify(h.slice(-40))); } catch (e) { /* rien */ } };
+  const KEY = 'rbf_trail';
+  const TRANSIENT = /^\/(battle|fusion)(\/|$)|^\/units\/info\/(evolve|spheres)|^\/units\/stack|^\/start\/\d+/;
 
-  function record() {
-    const h = load();
-    const cur = here();
-    if (h[h.length - 1] === cur) return;
-    if (h[h.length - 2] === cur) h.pop(); // retour arrière (bouton Retour, Alt+←, geste)
-    else h.push(cur);
-    save(h);
+  // Un écran = son chemin + l'unité affichée (les autres paramètres, comme « back », sont ignorés)
+  const keyOf = () => {
+    const id = new URLSearchParams(location.search).get('id');
+    return location.pathname + (id ? '?id=' + id : '');
+  };
+  const load = () => { try { const t = JSON.parse(sessionStorage.getItem(KEY)); if (t && Array.isArray(t.trail)) return t; } catch (e) { /* rien */ } return { trail: [], ptr: -1 }; };
+  const save = (t) => {
+    if (t.trail.length > 60) { const cut = t.trail.length - 60; t.trail = t.trail.slice(cut); t.ptr -= cut; }
+    try { sessionStorage.setItem(KEY, JSON.stringify(t)); } catch (e) { /* rien */ }
+  };
+  let pending = null; // position visée par notre propre retour
+
+  function push() {
+    const t = load(), k = keyOf();
+    if (t.trail[t.ptr] === k) return;
+    t.trail = t.trail.slice(0, t.ptr + 1);
+    t.trail.push(k);
+    t.ptr = t.trail.length - 1;
+    save(t);
   }
-  ['pushState', 'replaceState'].forEach((k) => {
-    const orig = history[k];
-    history[k] = function (...args) {
+  function onPop() {
+    const t = load(), k = keyOf();
+    if (pending !== null && t.trail[pending] === k) { t.ptr = pending; pending = null; save(t); return; }
+    pending = null;
+    for (let j = t.ptr - 1; j >= 0; j--) if (t.trail[j] === k) { t.ptr = j; save(t); return; }      // retour
+    for (let j = t.ptr + 1; j < t.trail.length; j++) if (t.trail[j] === k) { t.ptr = j; save(t); return; } // avance
+    push();
+  }
+  ['pushState', 'replaceState'].forEach((name) => {
+    const orig = history[name];
+    history[name] = function (...args) {
       const r = orig.apply(this, args);
-      if (k === 'replaceState') { const h = load(); if (h.length) { h[h.length - 1] = here(); save(h); } } else record();
+      if (name === 'pushState') push();
+      else { const t = load(); if (t.ptr >= 0) { t.trail[t.ptr] = keyOf(); save(t); } }
       return r;
     };
   });
-  window.addEventListener('popstate', record);
-  record();
+  window.addEventListener('popstate', onPop);
+  push(); // ouverture ou rechargement de page
+
+  // Où mène Back depuis l'écran actuel
+  // Un « écran » ignore l'unité affichée : passer d'une fiche à la suivante ne crée pas de niveau en plus
+  const screenOf = (k) => (k || '').split('?')[0];
+
+  // En remontant le fil : on saute les écrans d'action et les autres fiches du même écran,
+  // et on s'arrête sur le premier vrai écran différent.
+  function backTarget() {
+    const t = load();
+    const cur = screenOf(t.trail[t.ptr]);
+    for (let j = t.ptr - 1; j >= 0; j--) {
+      const k = t.trail[j];
+      if (TRANSIENT.test(k) || screenOf(k) === cur) continue;
+      return { pos: j, steps: j - t.ptr };
+    }
+    return null;
+  }
 
   document.addEventListener('click', (e) => {
     const back = e.target.closest && e.target.closest('a[class*="kit-module__"][class*="__back"], button[class*="kit-module__"][class*="__back"]');
     if (!back || e.button !== 0 || e.ctrlKey || e.metaKey) return;
-    const h = load();
-    if (h.length < 2) return; // pas de page précédente connue : comportement normal du jeu
+    const target = backTarget();
+    if (!target || target.steps >= 0) return; // rien de connu : comportement normal du jeu
     e.preventDefault();
     e.stopImmediatePropagation();
-    history.back();
+    pending = target.pos;
+    history.go(target.steps);
   }, true);
+
+  window.__rbfBackTarget = backTarget; // pour vérifier
 })();
