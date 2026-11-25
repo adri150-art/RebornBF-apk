@@ -72,6 +72,7 @@
       const lab = $$('img', s).map((im) => im.currentSrc || im.src).find((src) => /leader_burst_label|label/.test(src)) || imgOf(s);
       d.skills.push({ i, kind: skillKind(lab), label: lab, name: txt($(U('skillName'), s)), level: txt($(U('skillLevel'), s)), text });
     });
+    d.form = lookupForm(d);
     d.fuseOk = canFuse(d);
     return d;
   }
@@ -88,7 +89,57 @@
   }
 
   // Améliorer inutile : niveau et compétences au maximum
+  // ───────── Données officielles du jeu (data.rebornbf.com, API publique) ─────────
+  // On garde une version allégée en cache : évolution possible, niveau max, plafonds d'imps.
+  const DATA = 'https://data.rebornbf.com';
+  let forms = null;
+  try { const c = JSON.parse(localStorage.getItem('rbf_units_lite') || 'null'); if (c && c.map) forms = c; } catch (e) { /* rien */ }
+  async function loadData() {
+    try {
+      const last = +(sessionStorage.getItem('rbf_units_check') || 0);
+      if (forms && Date.now() - last < 10 * 60 * 1000) return;
+      sessionStorage.setItem('rbf_units_check', String(Date.now()));
+      const man = await fetch(DATA + '/v1/manifest.json').then((r) => r.json());
+      const f = (man.files || []).find((x) => x.kind === 'units');
+      if (!f || (forms && forms.path === f.path)) return;
+      const u = await fetch(DATA + f.path).then((r) => r.json());
+      const names = {};
+      (u.units || []).forEach((un) => (un.forms || []).forEach((fo) => { names[fo.id] = fo.name; names[un.id] = un.name; }));
+      const map = {};
+      (u.units || []).forEach((un) => (un.forms || []).forEach((fo) => {
+        let evo = 0;
+        if (fo.evolution) {
+          const parts = (fo.evolution.units || []).map((x) => x.count + '× ' + (names[x.unit] || x.unit))
+            .concat((fo.evolution.items || []).map((x) => x.count + '× ' + x.item.replace(/-/g, ' ')));
+          if (fo.evolution.zel) parts.push(Number(fo.evolution.zel).toLocaleString('fr-BE') + ' Zel');
+          evo = parts.join(', ') || 1;
+        }
+        const e = { e: evo, m: fo.maxLevel, i: fo.impCaps || null, r: fo.rarity };
+        if (fo.archiveId) map['a' + fo.archiveId] = e;
+        map['n' + String(fo.name || '').toLowerCase()] = map['n' + String(fo.name || '').toLowerCase()] || e;
+      }));
+      forms = { path: f.path, map };
+      try { localStorage.setItem('rbf_units_lite', JSON.stringify(forms)); } catch (e) { /* plein : tant pis */ }
+      lastKey = '';
+      schedule();
+    } catch (e) { /* hors ligne : on garde l'estimation */ }
+  }
+  function lookupForm(d) {
+    if (!forms) return null;
+    const m = (d.art || '').match(/\/units\/(\d+)\//) || (d.art || '').match(/_(\d+)\.png/);
+    const lvMax = +(((d.lv || '').match(/\/\s*(\d+)/) || [])[1] || 0);
+    const byId = m && forms.map['a' + m[1]];
+    if (byId) return byId;
+    const byName = forms.map['n' + (d.name || '').toLowerCase()];
+    return byName && (!lvMax || byName.m === lvMax) ? byName : null;
+  }
+
   function canFuse(d) {
+    if (d.form && d.form.i) {
+      const order = ['hp', 'atk', 'def', 'rec'];
+      const notCapped = d.stats.some((s, k) => { const cap = d.form.i[order[k]]; const v = parseInt((s.bonus || '0').replace(/\D/g, ''), 10) || 0; return cap && v < cap; });
+      if (notCapped) return true;
+    }
     const m = (d.lv || '').match(/(\d+)\s*\/\s*(\d+)/);
     if (!m || +m[1] < +m[2]) return true;
     const levels = d.skills.map((s) => parseInt((s.level || '').replace(/\D/g, ''), 10)).filter((n) => !isNaN(n));
@@ -257,7 +308,7 @@
     if (key !== lastKey) {
       lastKey = key;
       wrapEl.style.backgroundImage = `url('${A}common/base.jpg')`;
-      const fuseOk = d.fuseOk, evoOk = !d.omni;
+      const fuseOk = d.fuseOk, evoOk = d.form ? !!d.form.e : !d.omni;
       const rarity = d.rarityImg ? `<img src="${esc(d.rarityImg)}" alt="${esc(d.rarityText)}">` : (d.stars ? `<span class="gold">${esc(d.stars)}</span>` : '');
       const [lvNow, lvMax] = (d.lv || '').split('/');
       const val = (t, cls) => `<span class="val ol${cls ? ' ' + cls : ''}">${esc(t)}</span>`;
@@ -294,8 +345,8 @@
               ${pill(A, { html: val(s.name || 'Vide') })}</div>`).join('')}</div>` : ''}
         </div>
         <div class="actions">
-          ${btn('fusion', 'Améliorer', !fuseOk, fuseOk ? '' : 'Niveau et compétences au maximum')}
-          ${btn('evolve', 'Évoluer', !evoOk, evoOk ? '' : 'Forme finale')}
+          ${btn('fusion', 'Améliorer', !fuseOk, fuseOk ? '' : 'Niveau, imps et compétences au maximum')}
+          ${btn('evolve', 'Évoluer', !evoOk, evoOk ? (d.form && typeof d.form.e === 'string' ? 'Il faut : ' + d.form.e : '') : 'Forme finale')}
           ${d.hasHelper ? btn('helper', d.helper ? 'Aide ✓' : 'Aide') : ''}
           ${d.switchBtn ? btn('switch', 'Changer') : ''}
         </div>
@@ -420,5 +471,6 @@
   new MutationObserver(() => { if (location.pathname.startsWith('/units') || host.style.display !== 'none') schedule(); })
     .observe(document.documentElement, { childList: true, subtree: true, attributes: true, attributeFilter: ['aria-pressed', 'src'] });
   setInterval(schedule, 1000);
+  loadData();
   schedule();
 })();
