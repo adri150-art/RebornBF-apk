@@ -937,7 +937,7 @@ public class MainActivity extends Activity {
                 quick.dismiss();
                 // Le jeu demande combien de combats (fenêtre de l'appli dans la page), sinon farm sans fin
                 web.evaluateJavascript("(function(){if(window.rbfData&&rbfData.farm){rbfData.farm(" + JSONObject.quote(id) + ");return 1}return 0})()",
-                        r -> { if (!"1".equals(r)) farmQuest(id, 0); });
+                        res -> { if (!"1".equals(res)) farmQuest(id, 0); });
             }));
         } else if (quest != null && !quest.isEmpty()) {
             final String id = quest;
