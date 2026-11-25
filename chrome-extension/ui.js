@@ -236,6 +236,7 @@ try{
     h += '<button class="add" data-add>＋ Ajouter un script</button></div>';
     h += '<div class="sec">Confort</div><div class="card">';
     h += item('opt:remaster', '🃏', 'Fiche d\'unité remaster', 'Nouvelle fiche moderne, grande illustration', S.opt.remaster);
+    h += item('opt:infos', '📜', 'Infos du jeu', 'Butin et vagues des quêtes, taux d\'invocation', S.opt.infos !== false);
     h += item('opt:appfeel', '✨', 'Style appli', 'Boutons qui réagissent, transitions douces', S.opt.appfeel);
     h += item('opt:antipause', '⏯️', 'Anti-pause', 'Le jeu continue quand la fenêtre est derrière', S.opt.antipause);
     h += item('opt:notifications', '🔔', 'Notifications', 'Prévient quand un bot s\'arrête', S.opt.notifications);
@@ -342,7 +343,7 @@ try{
   mount();
   setInterval(mount, 2000);
 
-  window.__rbfUI = { quick, settings, close: closeAll };
+  window.__rbfUI = { quick, settings, close: closeAll, farm: (id) => farmQuest(String(id)) };
 })();
 
 }catch(e){console.error("[RBF] interface",e)}

@@ -17,7 +17,7 @@ const DEFAULTS = {
   bots: { farm: false, aventure: false },
   farm_target: 300,
   opt: {
-    antipause: true, appfeel: true, remaster: true, hd: false,
+    antipause: true, appfeel: true, remaster: true, infos: true, hd: false,
     always_x2: true, always_auto: false, notifications: true,
   },
   custom: [], // { name, code, on }
@@ -90,7 +90,9 @@ function buildInjection(s) {
   if (s.opt.antipause) js += wrap(asset('antipause.js'), true, 'anti-pause');
   if (s.opt.appfeel) js += wrap(asset('appfeel.js'), false, 'style appli');
   js += wrap(asset('nav.js'), false, 'menu rapide');
+  js += wrap(asset('gamedata.js'), false, 'données du jeu');
   if (s.opt.remaster) js += wrap(asset('unitplus.js'), false, "fiche d'unité");
+  if (s.opt.infos) js += wrap(asset('gameinfo.js'), false, 'infos du jeu');
   if (s.opt.hd) js += wrap(asset('hd.js'), false, 'filtre HD');
   if (s.opt.always_auto || s.opt.always_x2) {
     js += wrap(asset('combat.js').replace('__AUTO__', String(!!s.opt.always_auto)).replace('__X2__', String(!!s.opt.always_x2)), false, 'combat');

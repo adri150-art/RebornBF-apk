@@ -436,6 +436,9 @@ public class MainActivity extends Activity {
             }
         } else if (data.startsWith("notify:")) {
             notifyUser(data.substring(7));
+        } else if (data.startsWith("farm:") && data.substring(5).matches("\\d+")) {
+            final String id = data.substring(5);
+            runOnUiThread(() -> farmQuest(id, null));
         }
     }
 
@@ -511,7 +514,9 @@ public class MainActivity extends Activity {
         if (opt("antipause", true)) sb.append(wrap(asset("antipause.js"), true, "anti-pause"));
         if (opt("appfeel", true)) sb.append(wrap(asset("appfeel.js"), false, "style appli"));
         sb.append(wrap(asset("nav.js"), false, "menu rapide"));
+        sb.append(wrap(asset("gamedata.js"), false, "données du jeu"));
         if (opt("remaster", true)) sb.append(wrap(asset("unitplus.js"), false, "fiche d'unité"));
+        if (opt("infos", true)) sb.append(wrap(asset("gameinfo.js"), false, "infos du jeu"));
         if (opt("hd", false)) sb.append(wrap(asset("hd.js"), false, "filtre HD"));
         boolean auto = opt("always_auto", false), x2 = opt("always_x2", true);
         if (auto || x2) {
@@ -1071,6 +1076,7 @@ public class MainActivity extends Activity {
 
         section(box, "CONFORT");
         optionRow(box, "remaster", "Remaster des fiches d'unité", "Nouvelle fiche moderne : grande illustration, stats en cartes, compétences lisibles, actions groupées.", true);
+        optionRow(box, "infos", "Infos du jeu", "Butin, captures et vagues avant une quête, taux d'invocation (données officielles du jeu).", true);
         optionRow(box, "appfeel", "Style appli", "Boutons qui réagissent, transitions douces, plus de sélection de texte par erreur.", true);
         optionRow(box, "haptic", "Vibrations", "Petite vibration quand tu touches un bouton.", true);
         optionRow(box, "antipause", "Anti-pause", "Le jeu continue même si l'appli passe derrière ou si une notification arrive.", true);

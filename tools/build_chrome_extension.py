@@ -12,7 +12,9 @@ PARTS = [
     ('antipause.js', 'antipause', 'S.opt.antipause', True),
     ('appfeel.js', 'appfeel', 'S.opt.appfeel', False),
     ('nav.js', 'nav', 'true', False),
+    ('gamedata.js', 'gamedata', 'true', False),
     ('unitplus.js', 'unitplus', 'S.opt.remaster', False),
+    ('gameinfo.js', 'gameinfo', 'S.opt.infos', False),
     ('hd.js', 'hd', 'S.opt.hd', False),
     ('combat.js', 'combat', '(S.opt.always_x2||S.opt.always_auto)', False),
     ('farm.js', 'farm', 'S.bots.farm', False),
@@ -25,7 +27,7 @@ NATIVE = r"""// Pont entre l'interface de l'appli et Chrome : réglages enregist
   if (window.top !== window || window.rbfNative) return;
   const KEY = 'rbf_settings';
   const DEF = { bots: { farm: false, aventure: false }, farm_target: 300,
-    opt: { antipause: true, appfeel: true, remaster: true, hd: false, always_x2: true, always_auto: false, notifications: true },
+    opt: { antipause: true, appfeel: true, remaster: true, infos: true, hd: false, always_x2: true, always_auto: false, notifications: true },
     custom: [] };
   function load() {
     let s = {};

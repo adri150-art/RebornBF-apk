@@ -261,6 +261,14 @@
     .card .x{flex:none;margin:2px auto 12px;width:150px;height:44px}
     .card ul{padding:8px 16px 12px 34px;overflow-y:auto;font:16px/1.55 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;color:#f1ead8;user-select:text}
     .card li{margin:0 0 5px}.card li::marker{color:#ffd24a}
+    .card ul.mats{list-style:none;padding:6px 10px 8px;display:flex;flex-direction:column;gap:6px}
+    .card ul.mats li{display:flex;align-items:center;gap:8px;margin:0;padding:7px 8px;border-radius:9px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,210,120,.14)}
+    .card ul.mats .t{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+    .card ul.mats b{font:15px/1.2 "Lilita One",system-ui,sans-serif;color:#fff;font-weight:400}
+    .card ul.mats small{font-size:12.5px;line-height:1.35;color:#d9d0bb}.card ul.mats small b{font:inherit;color:#ffd24a}
+    .card ul.mats small.none{color:#9a927f}
+    .gbtn.mini{flex:none;width:86px;height:34px}.gbtn.mini span{font-size:13px}
+    .card .row2{display:flex;gap:8px;padding:2px 12px 12px}.card .row2 .gbtn{height:42px}
   </style>
   <div class="wrap"><div class="shade"></div><div class="page"></div><div class="pop"></div></div>`;
   const scrollEl = root.querySelector('.page');
@@ -285,7 +293,13 @@
     return m ? { leader: 'Leader', bb: 'BB', sbb: 'SBB', ubb: 'UBB', extra: 'Extra' }[m[1]] : '';
   };
 
+  let custom = null; // fenêtre « Évolution » (contenu prêt à afficher)
   function renderPop(d, A) {
+    if (custom !== null) {
+      if (lastPop !== 'custom:' + custom) { lastPop = 'custom:' + custom; popEl.innerHTML = custom; }
+      popEl.classList.add('on');
+      return;
+    }
     const s = d.skills.find((k) => k.i === openSkill);
     const key = s ? JSON.stringify(s) : '';
     if (key !== lastPop) {
@@ -358,15 +372,100 @@
   }
 
   root.addEventListener('click', (e) => {
-    if (e.target === popEl) { openSkill = -1; schedule(); return; }
+    if (e.target === popEl) { closePop(); return; }
     const el = e.target.closest('[data-a]');
     if (!el) return;
     const a = el.dataset.a;
     if (a === 'skill') { openSkill = +el.dataset.i; schedule(); return; }
-    if (a === 'close') { openSkill = -1; schedule(); return; }
+    if (a === 'close') { closePop(); return; }
+    if (a === 'evolve' && !el.classList.contains('off') && window.rbfData) { openEvolution(); return; }
+    if (a === 'goevolve') { closePop(); act('evolve'); return; }
+    if (a === 'sphere' && window.rbfData) { openSphere(+el.dataset.i); return; }
+    if (a === 'gosphere') { closePop(); act('sphere', el.dataset.i); return; }
+    if (a === 'farm') { closePop(); window.rbfData.farm(el.dataset.m); return; }
     act(a, el.dataset.i);
   });
-  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openSkill >= 0) { openSkill = -1; schedule(); } });
+  function closePop() { openSkill = -1; custom = null; lastPop = ''; schedule(); }
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && (openSkill >= 0 || custom !== null)) closePop(); });
+
+  // ───────── Évolution guidée : matériaux, meilleur endroit pour les farmer, bouton Farmer ─────────
+  const AREA_FR = { story: 'Aventure', vortex: 'Vortex', trial: 'Épreuve' };
+  function sourceLine(src) {
+    if (!src) return '<small class="none">Aucune source connue</small>';
+    if (src.kind === 'drop' || src.kind === 'capture') {
+      const i = src.info || {};
+      const pct = src.chance >= 99.5 ? '100 %' : (Math.round((src.chance || 0) * 10) / 10).toLocaleString('fr-BE') + ' %';
+      return `<small>${src.kind === 'capture' ? 'Capture' : 'Drop'} ${pct} · <b>${esc(i.name)}</b> · ${esc(i.dungeon)}${i.area && i.area !== i.dungeon ? ' (' + esc(i.area) + ')' : ''} · ${AREA_FR[i.areaType] || ''} · ${i.energy || 0} énergie</small>`;
+    }
+    const k = { summon: 'Invocation', 'merit-exchange': 'Boutique du mérite', 'level-up': 'Récompense de niveau joueur', craft: 'Fabrication', 'first-clear': 'Première victoire', evolution: 'Évolution', 'hunter-rank': 'Rang de chasseur' }[src.kind] || src.kind;
+    return `<small>${esc(k)}${src.info ? ' · ' + esc(src.info.name) : ''}${src.level ? ' · niv. ' + src.level : ''}${src.cost ? ' · ' + src.cost + ' mérites' : ''}</small>`;
+  }
+  async function openSphere(i) {
+    const d = read();
+    const sp = d && d.spheres[i];
+    if (!sp) return;
+    const A = d.assets || ASSETS_FALLBACK;
+    const shell = (body) => `<div class="card evo"><div class="bar badge">${sp.icon ? `<img src="${esc(sp.icon)}" alt="">` : ''}<b class="ol gold">${esc(sp.name || 'Sphère')}</b></div>${body}
+      <div class="row2"><div class="gbtn" data-a="gosphere" data-i="${i}" style="background-image:url('${A}common/button/sub_ss_btn1.png')"><span class="ol">Changer</span></div>
+      <div class="gbtn" data-a="close" style="background-image:url('${A}common/button/sub_ss_btn1.png')"><span class="ol">Fermer</span></div></div></div>`;
+    if (!sp.name || /^vide$/i.test(sp.name)) { custom = shell('<p>Aucune sphère équipée.</p>'); schedule(); return; }
+    custom = shell('<p>Chargement des données…</p>');
+    schedule();
+    try {
+      const I = await window.rbfData.index();
+      const s = await window.rbfData.findSphere(sp.name, sp.icon);
+      if (!s) { custom = shell('<p>Sphère introuvable dans les données du jeu.</p>'); schedule(); return; }
+      const fx = s.description ? [s.description] : await window.rbfData.effectsText(s.effects);
+      const src = await window.rbfData.whereToGet(s.id);
+      const lines = src.slice(0, 4).map((x) => {
+        if (x.kind === 'craft') {
+          const mats = (x.materials || []).map((m) => m.count + '× ' + window.rbfData.nameOf(I, m.id)).join(', ');
+          return `<li><div class="t"><b class="ol">Forge des sphères</b><small>Niveau ${x.level || 1}${x.karma ? ' · ' + Number(x.karma).toLocaleString('fr-BE') + ' karma' : ''}${mats ? ' · ' + esc(mats) : ''}</small></div></li>`;
+        }
+        const farmable = x.kind === 'drop' || x.kind === 'capture';
+        return `<li><div class="t">${sourceLine(x)}</div>${farmable ? `<div class="gbtn mini" data-a="farm" data-m="${x.mission}" style="background-image:url('${A}common/button/sub_ss_btn1.png')"><span class="ol">Farmer</span></div>` : ''}</li>`;
+      });
+      const kind = { signature: 'Sphère signature', 'all-stat': 'Sphère de stats', typed: s.type || 'Sphère' }[s.kind] || s.type || '';
+      custom = shell(`<div class="sub ol">${esc(s.name)}${s.rarity ? ' · ' + s.rarity + '★' : ''}${kind ? ' · ' + esc(kind) : ''}${s.signatureUnit ? ' · pour ' + esc(window.rbfData.nameOf(I, s.signatureUnit)) : ''}</div>
+        <ul>${fx.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>
+        ${lines.length ? `<div class="sub ol">Où l'obtenir</div><ul class="mats">${lines.join('')}</ul>` : ''}`);
+    } catch (err) {
+      custom = shell('<p>Données du jeu indisponibles pour le moment.</p>');
+    }
+    schedule();
+  }
+
+  async function openEvolution() {
+    const d = read();
+    if (!d) return;
+    const A = d.assets || ASSETS_FALLBACK;
+    const shell = (body) => `<div class="card evo"><div class="bar badge"><b class="ol gold">Évolution</b></div>${body}
+      <div class="row2"><div class="gbtn" data-a="goevolve" style="background-image:url('${A}common/button/sub_ss_btn1.png')"><span class="ol">Évoluer</span></div>
+      <div class="gbtn" data-a="close" style="background-image:url('${A}common/button/sub_ss_btn1.png')"><span class="ol">Fermer</span></div></div></div>`;
+    custom = shell('<p>Chargement des données…</p>');
+    schedule();
+    try {
+      const I = await window.rbfData.index();
+      const aid = ((d.art || '').match(/\/units\/(\d+)\//) || [])[1];
+      const f = (aid && I.formByArchive[aid]) || I.formByName[(d.name || '').toLowerCase()];
+      const ev = f && f.evolution;
+      if (!ev) { custom = shell('<p>Pas de données d\'évolution pour cette unité.</p>'); schedule(); return; }
+      const next = I.unit[f.unit] && I.unit[f.unit].forms[f.step + 1];
+      const mats = (ev.units || []).map((x) => ({ id: x.unit, count: x.count })).concat((ev.items || []).map((x) => ({ id: x.item, count: x.count })));
+      const rows = await Promise.all(mats.map(async (m) => {
+        const src = await window.rbfData.whereToGet(m.id);
+        const best = src[0];
+        const farmable = best && (best.kind === 'drop' || best.kind === 'capture');
+        return `<li><div class="t"><b class="ol">${m.count}× ${esc(window.rbfData.nameOf(I, m.id))}</b>${sourceLine(best)}</div>
+          ${farmable ? `<div class="gbtn mini" data-a="farm" data-m="${best.mission}" style="background-image:url('${A}common/button/sub_ss_btn1.png')"><span class="ol">Farmer</span></div>` : ''}</li>`;
+      }));
+      custom = shell(`<div class="sub ol">${next ? '→ ' + esc(next.name) + (next.rarity ? ' · ' + (next.rarity === 'omni' ? 'Omni' : next.rarity + '★') : '') : ''}${ev.zel ? ' · ' + Number(ev.zel).toLocaleString('fr-BE') + ' Zel' : ''}</div>
+        <ul class="mats">${rows.join('')}</ul>`);
+    } catch (err) {
+      custom = shell('<p>Données du jeu indisponibles pour le moment.</p>');
+    }
+    schedule();
+  }
 
 
   // ───────── BB, SBB et UBB : le jeu ne les montre que dans sa fenêtre de détail ─────────

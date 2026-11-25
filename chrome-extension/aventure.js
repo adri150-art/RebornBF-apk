@@ -114,7 +114,29 @@ try{
     watch.reset();
     render(why);
   }
+  /* ───────────── Données du jeu : boss, éléments, conseils ───────────── */
+  const EL_FR = { fire: 'Feu', water: 'Eau', earth: 'Terre', thunder: 'Foudre', light: 'Lumière', dark: 'Ténèbres' };
+  const BEATS = { fire: 'water', water: 'thunder', thunder: 'earth', earth: 'fire', light: 'dark', dark: 'light' };
+  let intel = ss.get('rbf_adv_intel', null); // { id, name, boss, el, tip, waves }
+  async function learnMission(id) {
+    if (!window.rbfData || (intel && intel.id === id)) return;
+    try {
+      const m = await window.rbfData.missionInfo(id);
+      if (!m) return;
+      const all = [].concat(...m.waves);
+      const boss = all.find((e) => e.boss) || all.sort((a, b) => b.hp - a.hp)[0];
+      const el = boss && boss.element;
+      intel = { id, name: m.name, boss: boss ? boss.name : '', el: el || '', tip: el && BEATS[el] ? EL_FR[BEATS[el]] : '', waves: m.waves.length, energy: m.energy };
+      ss.set('rbf_adv_intel', intel);
+    } catch (e) { /* données indisponibles */ }
+  }
+  const intelText = () => (intel && intel.boss ? `boss ${intel.boss}${intel.el ? ' (' + (EL_FR[intel.el] || intel.el) + ')' : ''}` : '');
+  const advice = () => (intel && intel.boss
+    ? ` – mission « ${intel.name} », boss ${intel.boss}${intel.el ? ' (' + (EL_FR[intel.el] || intel.el) + ')' : ''}${intel.tip ? ' : prends des unités ' + intel.tip : ''}`
+    : '');
+
   const stop = (why) => {
+    why += advice();
     setOn(false, why);
     try { if (window.rbfNative) window.rbfNative.postMessage('notify:Aventure arrêtée : ' + why); } catch (e) { /* rien */ }
   };
@@ -175,9 +197,15 @@ try{
     const next = $$('button[class*="tapNext"]').find(shown);
     if (next) { await click(next, 'récompenses'); return; }
 
+    // Défaite : on ne continue jamais avec des gemmes, on s'arrête avec un conseil tiré des données du jeu
+    if (/\b(game over|defeat|défaite|vous avez perdu|you lost)\b/i.test(document.body.innerText.slice(0, 3000))) {
+      stop('défaite');
+      return;
+    }
+
     const s = battleScene();
     if (!s) return;
-    render('combat');
+    render(intelText() ? 'combat · ' + intelText() : 'combat');
     watch.progress();
     const now = Date.now();
     if (now - st.lastFix < 2000) return;
@@ -187,14 +215,17 @@ try{
 
   // Préparation : « Begin Quest »
   async function stepBegin() {
+    learnMission(path().match(/^\/start\/(\d+)/)[1]);
     const btn = $('button[class*="__start"]');
     if (!shown(btn) || btn.disabled) return;
-    if (!enoughEnergy(costOf(document.body))) return;
-    await click(btn, 'départ');
+    const cost = costOf(document.body) || (intel && intel.id === path().match(/^\/start\/(\d+)/)[1] ? intel.energy : 0);
+    if (!enoughEnergy(cost)) return;
+    await click(btn, intelText() ? 'départ · ' + intelText() : 'départ');
   }
 
   // Choix du renfort : le premier de la liste, sinon « Aucune aide »
   async function stepHelper() {
+    learnMission(path().match(/^\/start\/(\d+)/)[1]);
     const ally = $$('a[class*="__row"][href*="/begin"][href*="ally="]').find(shown);
     const none = $('a[class*="noHelperButton"]');
     const el = ally || (shown(none) ? none : null);

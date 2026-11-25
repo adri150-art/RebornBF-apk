@@ -4,7 +4,7 @@
   if (window.top !== window || window.rbfNative) return;
   const KEY = 'rbf_settings';
   const DEF = { bots: { farm: false, aventure: false }, farm_target: 300,
-    opt: { antipause: true, appfeel: true, remaster: true, hd: false, always_x2: true, always_auto: false, notifications: true },
+    opt: { antipause: true, appfeel: true, remaster: true, infos: true, hd: false, always_x2: true, always_auto: false, notifications: true },
     custom: [] };
   function load() {
     let s = {};
