@@ -486,7 +486,9 @@ public class MainActivity extends Activity {
     }
 
     private static String wrap(String code, boolean atStart, String label) {
-        String body = "try{\n" + code + "\n}catch(e){console.error('[RBF] " + label + "',e)}\n";
+        // Le nom sert seulement dans les messages d'erreur : on le rend sûr pour JavaScript
+        String safe = JSONObject.quote("[RBF] " + label);
+        String body = "try{\n" + code + "\n}catch(e){console.error(" + safe + ",e)}\n";
         if (atStart) return "(function(){" + body + "})();\n";
         // Attend que la page soit prête (comme Tampermonkey « document-idle »)
         return "(function __rbfRun(){if(document.readyState==='loading'||!document.body){"

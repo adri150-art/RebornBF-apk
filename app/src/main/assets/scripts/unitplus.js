@@ -147,7 +147,7 @@
     if (getComputedStyle(body).position === 'static') body.style.position = 'relative';
     // Le bouton « Enhancements » du jeu ne fait rien : on le branche sur l'amélioration
     $$('[class*="unit-info-module__"][class*="__action"]').forEach((el) => {
-      if (el.dataset.rbfHooked || !/enhanc|am[ée]lior/i.test(el.innerText || '')) return;
+      if (el.dataset.rbfHooked || !/enhanc|am[ée]lior/i.test(el.innerText || el.textContent || '')) return;
       el.dataset.rbfHooked = '1';
       el.style.cursor = 'pointer';
       el.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); start('fusion'); }, true);
