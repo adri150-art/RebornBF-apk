@@ -17,9 +17,23 @@
   "build": {
     "appId": "be.adriano.rebornbf",
     "productName": "Reborn BF",
-    "files": ["main.js", "preload.js", "ui.js", "icon.ico", "icon.png"],
-    "extraResources": [{ "from": "scripts", "to": "scripts" }],
-    "win": { "icon": "icon.ico", "target": "nsis" },
+    "files": [
+      "main.js",
+      "preload.js",
+      "ui.js",
+      "icon.ico",
+      "icon.png"
+    ],
+    "extraResources": [
+      {
+        "from": "scripts",
+        "to": "scripts"
+      }
+    ],
+    "win": {
+      "icon": "icon.ico",
+      "target": "nsis"
+    },
     "nsis": {
       "oneClick": true,
       "perMachine": false,
@@ -30,6 +44,11 @@
       "installerIcon": "icon.ico",
       "uninstallerIcon": "icon.ico",
       "artifactName": "RebornBF-Setup.exe"
-    }
+    },
+    "publish": null
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adri150-art/RebornBF-apk"
   }
 }
