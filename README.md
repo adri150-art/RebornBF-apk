@@ -25,3 +25,9 @@ Dernière version : **Releases → RebornBF-Setup.exe** (installe l'appli et cr�
 - Onglet doré **☰** sur le bord droit (ou **Ctrl+M**) : menu rapide. Clic droit dessus (ou **Ctrl+,**) : bots & réglages.
 - **F11** plein écran, **F5** recharger, **Alt+←** retour, **F12** outils de développement.
 - Le code est dans `windows/` (Electron). Les scripts du jeu sont partagés avec Android (`app/src/main/assets/scripts/`).
+
+## Extension Chrome (PC)
+L'appli Windows ouvre le jeu dans Chrome (connexion Google de Chrome). Les fonctions (☰, bots, x2, fiche d'unité)
+viennent de l'extension `chrome-extension/`, générée par `python3 tools/build_chrome_extension.py`
+à partir des scripts partagés avec Android et de `windows/ui.js`.
+Installation : chrome://extensions → Mode développeur → Charger l'extension non empaquetée → dossier `chrome-extension`.

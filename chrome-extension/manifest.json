@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Reborn BF – Appli",
+  "version": "1.0.0",
+  "description": "Menu rapide, bots, x2 automatique et fiche d’unité remaster pour Reborn BF.",
+  "icons": {
+    "128": "icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://rebornbf.com/*",
+        "https://*.rebornbf.com/*"
+      ],
+      "js": [
+        "native.js",
+        "antipause.js",
+        "appfeel.js",
+        "nav.js",
+        "unitplus.js",
+        "hd.js",
+        "combat.js",
+        "farm.js",
+        "aventure.js",
+        "ui.js",
+        "custom.js"
+      ],
+      "run_at": "document_start",
+      "world": "MAIN",
+      "all_frames": false
+    }
+  ]
+}
