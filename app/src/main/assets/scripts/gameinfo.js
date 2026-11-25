@@ -66,6 +66,9 @@
     .tier .tt i{font-style:normal;font-size:11px;padding:2px 6px;border-radius:6px;background:#c0392b;color:#fff}
     .tier p{margin-top:4px;font-size:12.5px;color:#cfc6b0}
     .muted{color:#a99f88;font-size:12.5px}
+    .team{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+    .team a{display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px;border-radius:9px;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,210,120,.14);text-decoration:none;color:#f1ead8}
+    .team img{width:54px;height:54px;object-fit:contain}.team span{font-size:11.5px;text-align:center;line-height:1.2;max-height:2.4em;overflow:hidden}
   </style>
   <div class="tab ol" data-a="open"></div>
   <div class="pop"></div>`;
@@ -115,6 +118,7 @@
         <div class="facts"><span>⚡ ${m.energy} énergie</span><span>⚔️ ${m.battles} combats</span>${m.exp ? `<span>EXP ${num(m.exp)}</span>` : ''}${m.zel ? `<span>Zel ${num(m.zel)}</span>` : ''}${m.karma ? `<span>Karma ${num(m.karma)}</span>` : ''}</div></div>
       <div class="body">
         ${tipEls.length ? `<div class="tip">Conseil : prends des unités ${[...new Set(tipEls)].map((e) => `${elIcon(e)} ${EL_FR[e]}`).join(', ')}${boss.length ? ` contre le boss ${esc(boss[0].name)}` : main.length ? ` (ennemis surtout ${EL_FR[main[0]] || main[0]})` : ''}.</div>` : ''}
+        ${await teamAdvice(tipEls)}
         <h3>Butin possible</h3><div class="loot">${loot || '<span class="muted">Rien de particulier</span>'}</div>
         <h3>Vagues</h3>${waves || '<p class="muted">Pas de détail</p>'}
       </div>
@@ -122,6 +126,123 @@
   }
   actions.farm = (el) => { close(); window.rbfData.farm(el.dataset.m); };
   actions.mission = (el) => openMission(el.dataset.m);
+
+  // ───────── 6. Conseil d'équipe : tes unités du bon élément ─────────
+  // La liste de tes unités est retenue quand tu ouvres l'écran « Unités » du jeu.
+  const ROSTER = 'rbf_roster';
+  function saveRoster() {
+    const links = $$('a[href*="/units/info?id="]');
+    if (!links.length) return;
+    let old = {};
+    try { old = JSON.parse(localStorage.getItem(ROSTER) || '{}'); } catch (e) { old = {}; }
+    const list = old.list || {};
+    links.forEach((a) => {
+      const img = a.querySelector('img[src*="/units/"]');
+      const aid = img && ((img.currentSrc || img.src).match(/\/units\/(\d+)\//) || [])[1];
+      const uid = (a.getAttribute('href').match(/id=([0-9a-f-]{36})/) || [])[1];
+      if (aid && uid) list[uid] = aid;
+    });
+    try { localStorage.setItem(ROSTER, JSON.stringify({ at: Date.now(), list })); } catch (e) { /* rien */ }
+  }
+  async function teamAdvice(els) {
+    if (!els || !els.length) return '';
+    let roster = {};
+    try { roster = (JSON.parse(localStorage.getItem(ROSTER) || '{}').list) || {}; } catch (e) { roster = {}; }
+    const uids = Object.keys(roster);
+    if (!uids.length) return `<p class="muted" style="margin-top:6px">Ouvre une fois l'écran « Unités » du jeu pour que je connaisse tes unités et te conseille une équipe.</p>`;
+    const I = await window.rbfData.index();
+    const seen = new Set();
+    const picks = uids.map((uid) => ({ uid, f: I.formByArchive[roster[uid]] }))
+      .filter((x) => x.f && els.includes(x.f.element) && !/totem|idol|pot|mimic|nymph|spirit|crystal|bulb|egg/i.test(x.f.name))
+      .sort((a, b) => ((b.f.stats && b.f.stats.max && b.f.stats.max.atk) || 0) - ((a.f.stats && a.f.stats.max && a.f.stats.max.atk) || 0))
+      .filter((x) => { if (seen.has(x.f.id)) return false; seen.add(x.f.id); return true; })
+      .slice(0, 6);
+    if (!picks.length) return `<p class="muted" style="margin-top:6px">Aucune de tes unités connues n'a cet élément.</p>`;
+    return `<h3>Tes unités conseillées</h3><div class="team">${picks.map((x) => `<a href="/units/info?id=${x.uid}" title="${esc(x.f.name)}">
+      <img src="${A}units/${roster[x.uid]}/unit_ills_thum_${roster[x.uid]}.png" alt=""><span>${esc(x.f.name)}</span></a>`).join('')}</div>`;
+  }
+
+  // ───────── 5. Fiche du boss pendant le combat ─────────
+  const COND = (c) => {
+    switch (c.type) {
+      case 'on_turn': return 'au tour ' + c.turn;
+      case 'every_n_turns': return 'tous les ' + c.n + ' tours';
+      case 'hp_under': return 'sous ' + c.hpPercent + ' % de PV';
+      case 'hp_over': return 'au-dessus de ' + c.hpPercent + ' % de PV';
+      case 'limit': return c.times === 1 ? 'une seule fois' : c.times + ' fois max';
+      case 'side_alive': return 's\'il reste ' + c.count + ' ennemi' + (c.count > 1 ? 's' : '');
+      case 'ally_defeated': return 'quand un allié tombe';
+      case 'unit_term': return c.term === 'abnormal_state' ? 'si tes unités ont une altération' : '';
+      default: return '';
+    }
+  };
+  const ATK = { 'attack.aoe': 'attaque de zone', 'attack.st': 'attaque ciblée', 'attack.random': 'attaques au hasard' };
+  async function openBoss() {
+    const id = sessionStorage.getItem('rbf_last_mission');
+    if (!id) { show(`<div class="card"><div class="head"><h2>Mission inconnue</h2><p>Lance la quête depuis le jeu pour que je sache qui tu affrontes.</p></div><div class="row2"><div class="gbtn ol" data-a="close">Fermer</div></div></div>`); return; }
+    show(`<div class="card"><div class="head"><h2>Chargement…</h2></div><div class="row2"><div class="gbtn ol" data-a="close">Fermer</div></div></div>`);
+    const m = await window.rbfData.missionInfo(id).catch(() => null);
+    if (!m) { show(`<div class="card"><div class="head"><h2>Mission inconnue</h2><p>Cette mission n'est pas dans les données du jeu.</p></div><div class="row2"><div class="gbtn ol" data-a="close">Fermer</div></div></div>`); return; }
+    let foes = [].concat(...m.waves).filter((e) => e.boss);
+    if (!foes.length) foes = m.waves[m.waves.length - 1] || [];
+    const blocks = await Promise.all(foes.map(async (e) => {
+      const byId = {};
+      (e.skills || []).forEach((s) => { byId[s.id] = s; });
+      const lines = [];
+      for (const a of e.ai || []) {
+        const s = byId[a.skill];
+        if (!s) continue;
+        const when = (a.conditions || []).map(COND).filter(Boolean);
+        const kind = (s.effects || []).map((x) => ATK[x.id]).filter(Boolean)[0] || '';
+        const extra = (await window.rbfData.effectsText((s.effects || []).filter((x) => !ATK[x.id]))).slice(0, 3);
+        lines.push(`<div class="en" style="align-items:flex-start"><span style="flex:none;min-width:92px;color:#ffd24a;font-size:12.5px">${esc(a.when === 'default' ? (a.chance ? a.chance + ' % de chance' : 'parfois') : when.join(', ') || 'spécial')}</span>
+          <span class="n" style="white-space:normal"><b>${esc(s.name)}</b>${kind ? ' · ' + kind : ''}${extra.length ? '<br><small class="muted">' + extra.map(esc).join(' · ') + '</small>' : ''}</span></div>`);
+      }
+      const strong = BEATS[e.element];
+      return `<div class="wave"><div class="en boss">${elIcon(e.element)}<span class="n">👑 ${esc(e.name)}</span><span class="hp">${num(e.hp)} PV</span></div>
+        ${e.acts ? `<small>${e.acts.min === e.acts.max ? e.acts.min : e.acts.min + ' à ' + e.acts.max} action(s) par tour${strong ? ' · faible contre ' + EL_FR[strong] : ''}</small>` : ''}
+        ${lines.join('') || '<small>Pas d\'attaque spéciale connue</small>'}</div>`;
+    }));
+    show(`<div class="card"><div class="head"><h2>${esc(m.name)}</h2><p>Ce que le boss va faire</p></div>
+      <div class="body">${blocks.join('')}</div><div class="row2"><div class="gbtn ol" data-a="close">Fermer</div></div></div>`);
+  }
+
+  // ───────── Synthèse : toucher un ingrédient → où le farmer (meilleur taux d'abord) ─────────
+  async function openItemSources(src, label) {
+    show(`<div class="card"><div class="head"><h2>Chargement…</h2></div><div class="row2"><div class="gbtn ol" data-a="close">Fermer</div></div></div>`);
+    const id = await window.rbfData.itemFromIcon(src).catch(() => null);
+    if (!id) { show(`<div class="card"><div class="head"><h2>Ingrédient inconnu</h2><p>Je ne retrouve pas cet objet dans les données du jeu.</p></div><div class="row2"><div class="gbtn ol" data-a="close">Fermer</div></div></div>`); return; }
+    const I = await window.rbfData.index();
+    const all = await window.rbfData.whereToGet(id);
+    const farm = all.filter((x) => x.kind === 'drop' || x.kind === 'capture').sort((a, b) => (b.chance || 0) - (a.chance || 0) || (a.energy || 0) - (b.energy || 0));
+    const other = all.filter((x) => !(x.kind === 'drop' || x.kind === 'capture'));
+    const K = { summon: 'Invocation', 'merit-exchange': 'Boutique du mérite', 'level-up': 'Niveau joueur', craft: 'Synthèse', 'first-clear': 'Première victoire', evolution: 'Évolution', 'hunter-rank': 'Rang de chasseur' };
+    show(`<div class="card"><div class="head" style="display:flex;gap:10px;align-items:center"><img src="${esc(src)}" alt="" style="width:46px;height:46px;object-fit:contain">
+        <div><h2>${esc(label || window.rbfData.nameOf(I, id))}</h2><p>${esc(window.rbfData.nameOf(I, id))} · où le farmer, meilleur taux d'abord</p></div></div>
+      <div class="body">${farm.slice(0, 8).map((x, k) => { const i = x.info || {}; return `<div class="wave" style="display:flex;align-items:center;gap:10px">
+          <div style="flex:1;min-width:0"><div class="en" style="padding:0"><span class="n" style="font-weight:600">${k === 0 ? '⭐ ' : ''}${esc(i.name)}</span><span class="hp" style="color:#ffd24a">${pct(x.chance)}</span></div>
+          <p class="muted">${x.kind === 'capture' ? '🎯 Capture' : '📦 Drop'} · ${esc(i.dungeon)}${i.area && i.area !== i.dungeon ? ' · ' + esc(i.area) : ''} · ⚡ ${i.energy || 0}</p></div>
+          <div class="gbtn ol" data-a="farm" data-m="${x.mission}" style="flex:none;width:86px;height:34px;font-size:13px;margin:0">Farmer</div></div>`; }).join('')
+        || '<p class="muted" style="margin-top:8px">Ne tombe dans aucune mission.</p>'}
+        ${other.length ? `<h3>Autres moyens</h3><div class="loot">${other.slice(0, 6).map((x) => `<span>${esc(K[x.kind] || x.kind)}${x.info ? ' · ' + esc(x.info.name) : ''}</span>`).join('')}</div>` : ''}
+      </div><div class="row2"><div class="gbtn ol" data-a="close">Fermer</div></div></div>`);
+  }
+  const SYNTH = /^\/(town|items|craft|synth|forge|workshop)/i;
+  document.addEventListener('click', (e) => {
+    if (!SYNTH.test(location.pathname) || !window.rbfData) return;
+    if (e.composedPath().includes(host)) return;
+    let img = e.target.tagName === 'IMG' ? e.target : null;
+    if (!img && e.target.closest) {
+      const box = e.target.closest('button,a,li,[role="button"]');
+      const imgs = box ? box.querySelectorAll('img[src*="/item/"]') : [];
+      if (imgs.length === 1) img = imgs[0];
+    }
+    const src = img && (img.currentSrc || img.src);
+    if (!src || !/\/item\//.test(src)) return;
+    const box = img.closest('button,a,li') || img.parentElement;
+    const label = box ? (box.innerText || '').split('\n').map((t) => t.trim()).find((t) => t && !/^[x×]?\d+$/.test(t) && !/poss/i.test(t)) : '';
+    setTimeout(() => openItemSources(src, label), 0);
+  }, true);
 
   // Boutons ⓘ dans la liste des missions d'un donjon
   function decorateDungeon() {
@@ -247,6 +368,9 @@
   function route() {
     const p = location.pathname;
     if (p.startsWith('/quests/dungeon/')) decorateDungeon();
+    if (p === '/units/list' || p === '/units') saveRoster();
+    const sm = p.match(/^\/start\/(\d+)/);
+    if (sm) sessionStorage.setItem('rbf_last_mission', sm[1]);
     if (p === lastPath) return;
     lastPath = p;
     close();
@@ -254,6 +378,7 @@
     if (m) showTab('📜 Infos quête', () => openMission(m[1]));
     else if (p.startsWith('/summon')) showTab('📊 Taux', openRates);
     else if (p.startsWith('/units/info/evolve')) showTab('📦 Où farmer', openEvoGuide);
+    else if (p.startsWith('/battle')) showTab('👑 Boss', openBoss);
     else hideTab();
   }
   ['pushState', 'replaceState'].forEach((k) => {

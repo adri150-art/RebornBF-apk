@@ -173,7 +173,7 @@
       const d = e.drops || {};
       return {
         id: e.enemy, name: en.name || '?', element: v.element || '', hp: (v.stats && v.stats.hp) || 0, boss: !!e.boss,
-        ai: v.ai || [], capture: d.capture ? { unit: d.capture.unit, name: nameOf(I, d.capture.unit), rate: d.capture.rate } : null,
+        ai: v.ai || [], skills: v.skills || [], acts: v.acts || null, capture: d.capture ? { unit: d.capture.unit, name: nameOf(I, d.capture.unit), rate: d.capture.rate } : null,
         items: (d.items || []).map((x) => ({ id: x.item || x.id, name: nameOf(I, x.item || x.id), chance: x.rate })),
         chest: !!d.chest,
         resists: v.resists || null,
@@ -254,5 +254,16 @@
     return best || (cands.length === 1 ? cands[0] : null);
   }
 
-  window.rbfData = { get, index, missions, enemies, whereToGet, missionInfo, nameOf, farm, nice, effectsText, findSphere, waveEnemies };
+  // Objet affiché par le jeu (icône) → identifiant de l'API
+  async function itemFromIcon(src) {
+    const art = await get('art');
+    const file = String(src || '').split('/').pop().split('?')[0];
+    const it = (art.items || []).find((x) => x.icon && x.icon.path.split('/').pop() === file);
+    if (it) return it.id;
+    const u = String(src || '').match(/\/units\/(\d+)\//);
+    if (u) { const I = await index(); return I.formByArchive[u[1]] ? I.formByArchive[u[1]].id : null; }
+    return null;
+  }
+
+  window.rbfData = { get, index, missions, enemies, whereToGet, missionInfo, nameOf, farm, nice, effectsText, findSphere, waveEnemies, itemFromIcon };
 })();
