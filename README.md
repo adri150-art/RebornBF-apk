@@ -1,4 +1,4 @@
-# Reborn BF – appli Android
+# Reborn BF – appli Android et Windows
 
 Le jeu rebornbf.com dans sa propre appli : plein écran, sans barre d'adresse, avec un panneau pour activer ou couper les bots.
 
@@ -19,3 +19,9 @@ Chaque modification envoyée sur `main` recompile l'APK automatiquement (onglet 
 - Retour : page précédente ; sur la première page, l'appli passe en arrière-plan sans fermer le jeu.
 
 Les scripts intégrés sont dans `app/src/main/assets/scripts/`.
+
+## Windows
+Dernière version : **Releases → RebornBF-Setup.exe** (installe l'appli et crée un raccourci sur le Bureau).
+- Onglet doré **☰** sur le bord droit (ou **Ctrl+M**) : menu rapide. Clic droit dessus (ou **Ctrl+,**) : bots & réglages.
+- **F11** plein écran, **F5** recharger, **Alt+←** retour, **F12** outils de développement.
+- Le code est dans `windows/` (Electron). Les scripts du jeu sont partagés avec Android (`app/src/main/assets/scripts/`).

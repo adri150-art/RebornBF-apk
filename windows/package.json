@@ -1,0 +1,35 @@
+{
+  "name": "rebornbf",
+  "productName": "Reborn BF",
+  "version": "1.0.0",
+  "description": "Reborn BF – le jeu dans sa propre fenêtre, avec bots et menu rapide",
+  "author": "Adriano Correnti",
+  "main": "main.js",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "be.adriano.rebornbf",
+    "productName": "Reborn BF",
+    "files": ["main.js", "preload.js", "ui.js", "icon.ico", "icon.png"],
+    "extraResources": [{ "from": "scripts", "to": "scripts" }],
+    "win": { "icon": "icon.ico", "target": "nsis" },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "Reborn BF",
+      "runAfterFinish": true,
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
+      "artifactName": "RebornBF-Setup.exe"
+    }
+  }
+}

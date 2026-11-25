@@ -1,4 +1,4 @@
-name: Construire l'APK
+name: Construire les applis
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  android:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,3 +42,38 @@ jobs:
           body: APK à installer sur le téléphone (RebornBF.apk).
           files: RebornBF.apk
           make_latest: true
+
+  windows:
+    needs: android
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Copier les scripts partagés avec Android
+        shell: bash
+        run: mkdir -p windows/scripts && cp app/src/main/assets/scripts/*.js windows/scripts/
+
+      - name: Installer
+        working-directory: windows
+        run: npm install --no-audit --no-fund
+
+      - name: Construire
+        working-directory: windows
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --win nsis --x64 --publish never --config.extraMetadata.version=1.0.${{ github.run_number }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RebornBF-Windows
+          path: windows/dist/RebornBF-Setup.exe
+
+      - name: Ajouter à la version
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.0.${{ github.run_number }}
+          files: windows/dist/RebornBF-Setup.exe
