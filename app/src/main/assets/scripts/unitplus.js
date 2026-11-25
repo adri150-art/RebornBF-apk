@@ -72,6 +72,7 @@
       const lab = $$('img', s).map((im) => im.currentSrc || im.src).find((src) => /leader_burst_label|label/.test(src)) || imgOf(s);
       d.skills.push({ i, kind: skillKind(lab), label: lab, name: txt($(U('skillName'), s)), level: txt($(U('skillLevel'), s)), text });
     });
+    d.fuseOk = canFuse(d);
     return d;
   }
 
@@ -179,7 +180,7 @@
     .gbtn span{font-size:15px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .gbtn.off{filter:grayscale(1) brightness(.62)}
     /* Compétences : des boutons, le détail s'ouvre dans une fenêtre */
-    .skills{flex:none;display:grid;grid-template-columns:repeat(var(--n,2),1fr);gap:5px}
+    .skills{flex:none;display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
     .sk{position:relative;height:44px;border-radius:9px;cursor:pointer;overflow:hidden;background:rgba(14,11,7,.82);
       box-shadow:inset 0 0 0 1px rgba(255,210,120,.3),0 2px 4px rgba(0,0,0,.4);display:flex;flex-direction:column;justify-content:flex-end;
       padding:0 8px 5px;transition:transform .08s,box-shadow .15s}
@@ -189,19 +190,22 @@
     .sk b{font-size:12.5px;font-weight:400;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:30px}
     .sk small{position:absolute;right:7px;bottom:5px;font-size:12px;color:#ffd24a}
     /* Fenêtre de détail */
-    .pop{position:absolute;inset:0;z-index:10;display:flex;align-items:flex-end;justify-content:center;padding:10px;background:rgba(0,0,0,.45);
+    .pop{position:absolute;inset:0;z-index:10;display:flex;align-items:center;justify-content:center;padding:14px 10px;background:rgba(0,0,0,.6);
       opacity:0;pointer-events:none;transition:opacity .16s}
     .pop.on{opacity:1;pointer-events:auto}
-    .card{width:100%;max-height:80%;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;background:rgba(14,11,7,.96);
-      box-shadow:inset 0 0 0 1.5px rgba(255,210,120,.45),0 8px 24px rgba(0,0,0,.6);transform:translateY(18px);transition:transform .18s ease-out}
+    .card{width:100%;max-height:92%;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;background:rgba(14,11,7,.96);
+      box-shadow:inset 0 0 0 1.5px rgba(255,210,120,.45),0 8px 24px rgba(0,0,0,.6);transform:scale(.94);transition:transform .18s ease-out}
     .pop.on .card{transform:none}
     .card .bar{flex:none;position:relative;aspect-ratio:640/94;background:left center/100% 100% no-repeat;display:flex;align-items:center;padding:10% 14px 0 5%}
-    .card .bar.badge{aspect-ratio:auto;height:44px;padding:0 12px;gap:8px;background:none;border-bottom:1px solid rgba(255,210,120,.25)}
-    .card .bar.badge img{height:30px}
-    .card .bar b{flex:1;min-width:0;font-size:17px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .card .bar small{font-size:15px;color:#ffd24a}
-    .card p{padding:8px 14px 10px;overflow-y:auto;font:13.5px/1.5 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;color:#f1ead8;user-select:text}
-    .card .x{flex:none;margin:0 auto 10px;width:130px}
+    .card .bar.badge{aspect-ratio:auto;height:54px;padding:0 14px;gap:10px;background:none;border-bottom:1px solid rgba(255,210,120,.25)}
+    .card .bar.badge img{height:38px}
+    .card .bar b{flex:1;min-width:0;font-size:20px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .card .bar small{font-size:17px;color:#ffd24a}
+    .card .sub{padding:6px 16px 0;font-size:14px;color:#ffd24a}
+    .card p{padding:8px 16px 12px;overflow-y:auto;font:16px/1.6 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;color:#f1ead8;user-select:text}
+    .card .x{flex:none;margin:2px auto 12px;width:150px;height:44px}
+    .card ul{padding:8px 16px 12px 34px;overflow-y:auto;font:16px/1.55 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;color:#f1ead8;user-select:text}
+    .card li{margin:0 0 5px}.card li::marker{color:#ffd24a}
   </style>
   <div class="wrap"><div class="shade"></div><div class="page"></div><div class="pop"></div></div>`;
   const scrollEl = root.querySelector('.page');
@@ -219,6 +223,7 @@
       <i class="fl" style="background-image:url('${A}${f}l.png')"></i><i class="fc" style="background-image:url('${A}${f}c.png')"></i><i class="fr" style="background-image:url('${A}${f}r.png')"></i>
       <div class="in">${opts.icon ? `<img class="lab" src="${esc(opts.icon)}" alt="">` : ''}${opts.html || ''}</div></div>`;
   }
+  const isBurst = (s) => /\/(bb|sbb|ubb)\.png/.test(s.label || '');
   const isWide = (s) => /\/(leader|bb)\.png/.test(s.label || '');
   const shortName = (s) => {
     const m = (s.label || '').match(/\/(leader|bb|sbb|ubb|extra)\.png/);
@@ -234,7 +239,8 @@
         const head = isWide(s)
           ? `<div class="bar" style="background-image:url('${esc(s.label)}')"><b class="ol gold">${esc(s.name)}</b>${s.level ? `<small class="ol">${esc(s.level)}</small>` : ''}</div>`
           : `<div class="bar badge">${s.label ? `<img src="${esc(s.label)}" alt="">` : ''}<b class="ol gold">${esc(s.name)}</b>${s.level ? `<small class="ol">${esc(s.level)}</small>` : ''}</div>`;
-        popEl.innerHTML = `<div class="card">${head}<p>${esc(s.text)}</p>
+        const parts = String(s.text || '').split(/\s+·\s+/).filter(Boolean);
+        popEl.innerHTML = `<div class="card">${head}${s.sub ? `<div class="sub ol">${esc(s.sub)}</div>` : ''}${parts.length > 1 ? `<ul>${parts.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>` : `<p>${esc(s.text)}</p>`}
           <div class="gbtn x" data-a="close" style="background-image:url('${A}common/button/sub_ss_btn1.png')"><span class="ol">Fermer</span></div></div>`;
       }
     }
@@ -247,12 +253,13 @@
     if (key !== lastKey) {
       lastKey = key;
       wrapEl.style.backgroundImage = `url('${A}common/base.jpg')`;
-      const fuseOk = canFuse(d), evoOk = !d.omni;
+      const fuseOk = d.fuseOk, evoOk = !d.omni;
       const rarity = d.rarityImg ? `<img src="${esc(d.rarityImg)}" alt="${esc(d.rarityText)}">` : (d.stars ? `<span class="gold">${esc(d.stars)}</span>` : '');
       const [lvNow, lvMax] = (d.lv || '').split('/');
       const val = (t, cls) => `<span class="val ol${cls ? ' ' + cls : ''}">${esc(t)}</span>`;
       const btn = (a, label, off, title) => `<div class="gbtn${off ? ' off' : ''}" data-a="${a}" title="${esc(title || '')}" style="background-image:url('${A}common/button/sub_ss_btn1.png')"><span class="ol">${esc(label)}</span></div>`;
       const n = d.skills.length;
+      const nB = d.skills.filter(isBurst).length || 1, nA = (n - d.skills.filter(isBurst).length) || 1;
       scrollEl.innerHTML = `<div class="top">
           <div class="back" data-a="back" title="Retour" style="background-image:url('${A}header/header_title_btn1.png')"></div>
           <div class="plate" style="background-image:url('${A}header/header_title_base.png')">
@@ -288,7 +295,7 @@
           ${d.hasHelper ? btn('helper', d.helper ? 'Aide ✓' : 'Aide') : ''}
           ${d.switchBtn ? btn('switch', 'Changer') : ''}
         </div>
-        ${n ? `<div class="skills" style="--n:${n > 3 ? Math.ceil(n / 2) : n}">${d.skills.map((s) => `<div class="sk" data-a="skill" data-i="${s.i}" title="${esc(s.text)}">
+        ${n ? `<div class="skills">${d.skills.map((s) => `<div class="sk" data-a="skill" data-i="${s.i}" title="${esc(s.text)}" style="grid-column:span ${6 / (isBurst(s) ? nB : nA)}">
             <div class="lb${isWide(s) ? ' wide' : ''}" style="background-image:url('${esc(s.label)}')"></div>
             <b class="ol gold">${esc(s.name || shortName(s))}</b>${s.level ? `<small class="ol">${esc(s.level)}</small>` : ''}</div>`).join('')}</div>` : ''}`;
     }
@@ -307,6 +314,71 @@
   window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openSkill >= 0) { openSkill = -1; schedule(); } });
 
 
+  // ───────── BB, SBB et UBB : le jeu ne les montre que dans sa fenêtre de détail ─────────
+  // On l'ouvre une fois en invisible pour chaque compétence, on lit tout, puis on la referme.
+  const details = new Map();
+  let silent = false;
+  const hideStyle = document.createElement('style');
+  hideStyle.textContent = 'html.rbf-silent [class*="unit-info-module__"][class*="__panels"]{visibility:hidden!important;pointer-events:none!important}';
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function waitFor(fn, ms) { const t = Date.now(); while (Date.now() - t < ms) { const v = fn(); if (v) return v; await wait(40); } return null; }
+  const panelsOpen = () => { const p = $(U('panels')); return p && p.children.length ? p : null; };
+  const LABELS = [[/ultimate/i, 'ubb'], [/super/i, 'sbb'], [/leader/i, 'leader'], [/extra/i, 'extra'], [/brave|burst/i, 'bb']];
+  async function prefetch(id) {
+    details.set(id, null);
+    if (!hideStyle.isConnected) document.head.appendChild(hideStyle);
+    silent = true;
+    document.documentElement.classList.add('rbf-silent');
+    const out = [];
+    try {
+      const rows = $$(U('skillRow'));
+      for (let i = 0; i < rows.length; i++) {
+        if (currentUnitId() !== id) break;
+        if (panelsOpen()) { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await waitFor(() => !panelsOpen(), 800); }
+        rows[i].click();
+        const p = await waitFor(panelsOpen, 1500);
+        const list = [];
+        if (p) {
+          await wait(60);
+          $$('article', p).forEach((a) => {
+            const label = txt($('[class*="__panelLabel"]', a));
+            const h = $('h2', a); let name = '';
+            if (h) { const c = h.cloneNode(true); c.querySelectorAll('[class*="__repeat"]').forEach((e) => e.remove()); name = txt(c); }
+            const sub = txt($('header p', a));
+            const k = (LABELS.find(([re]) => re.test(label)) || [null, ''])[1];
+            list.push({ kindKey: k, labelText: label, name, sub, text: txt($('[class*="__panelText"]', a)) });
+          });
+          document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+          await waitFor(() => !panelsOpen(), 800);
+        }
+        out[i] = list;
+      }
+    } catch (e) { /* on garde ce qu'on a */ }
+    if (panelsOpen()) document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await wait(30);
+    document.documentElement.classList.remove('rbf-silent');
+    silent = false;
+    if (currentUnitId() === id) details.set(id, out); else details.delete(id);
+    lastKey = '';
+    schedule();
+  }
+  function expandSkills(d) {
+    const det = details.get(d.id);
+    if (!det) return d.skills;
+    const A = d.assets || ASSETS_FALLBACK;
+    const res = [];
+    d.skills.forEach((s, i) => {
+      const list = det[i];
+      if (!list || !list.length) { res.push(Object.assign({}, s, { i: res.length })); return; }
+      list.forEach((p, j) => {
+        const lvl = (p.sub.match(/Lv\.?\s*\d+/i) || [''])[0];
+        const label = p.kindKey ? A + 'common/leader_burst_label/' + p.kindKey + '.png' : s.label;
+        res.push({ i: res.length, label, name: p.name || (j === 0 ? s.name : ''), level: lvl || (j === 0 ? s.level : ''), sub: p.sub.replace(lvl, '').replace(/^\s*·\s*/, ''), text: p.text || (j === 0 ? s.text : '') });
+      });
+    });
+    return res;
+  }
+
   // Une fenêtre du jeu est ouverte (détails, choix d'aide, sphères…) : on s'efface pour la laisser au-dessus
   function gameDialogOpen() {
     const panels = $(U('panels'));
@@ -319,12 +391,13 @@
   function update() {
     raf = 0;
     const page = location.pathname === '/units/info' && $(U('page'));
-    if (!page || gameDialogOpen()) { host.style.display = 'none'; return; }
+    if (!page || (!silent && gameDialogOpen())) { host.style.display = 'none'; return; }
     const r = page.getBoundingClientRect();
     if (!r.width || !r.height) { host.style.display = 'none'; return; }
     if (!document.documentElement.contains(host)) document.documentElement.appendChild(host);
     Object.assign(host.style, { display: 'block', left: r.left + 'px', top: r.top + 'px', width: r.width + 'px', height: r.height + 'px' });
     const d = read();
+    if (d) { d.skills = expandSkills(d); if (!silent && d.id && !details.has(d.id)) prefetch(d.id); }
     if (d) render(d);
   }
   const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
