@@ -155,16 +155,14 @@
       !$('[class*="unit-info-module__"][class*="__titleRow"] [class*="__omni"]');
   }
 
-  // Fusion inutile : niveau au maximum et compétences au niveau 10
+  // Fusion inutile : niveau au maximum (ex. « Lv. 150/150 ») et compétences au niveau 10
   function canFuse() {
-    const rows = $$('[class*="unit-info-module__"][class*="__statRow"]');
-    let maxed = false;
-    for (const r of rows) {
-      const m = (r.innerText || r.textContent || '').match(/(\d+)\s*\/\s*(\d+)/);
-      if (m && /lv/i.test(r.innerText || r.textContent || '')) { maxed = +m[1] >= +m[2]; break; }
-    }
-    if (!maxed) return true;
-    const levels = $$('[class*="unit-info-module__"][class*="__skillLevel"]').map((e) => parseInt((e.textContent || '').replace(/\D/g, ''), 10)).filter((n) => !isNaN(n));
+    const left = $('[class*="unit-info-module__"][class*="__left"]') || $('[class*="unit-info-module__"][class*="__body"]');
+    const txt = left ? (left.innerText || left.textContent || '') : '';
+    const m = txt.match(/Lv\.?\s*(\d+)\s*\/\s*(\d+)/i);
+    if (!m || +m[1] < +m[2]) return true;
+    const levels = $$('[class*="unit-info-module__"][class*="__skillLevel"]')
+      .map((e) => (e.textContent || '').match(/(\d+)/)).filter(Boolean).map((x) => +x[1]);
     return levels.some((n) => n < 10);
   }
 
