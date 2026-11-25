@@ -123,80 +123,95 @@ try{
   root.innerHTML = `<style>
     :host{all:initial}
     *{box-sizing:border-box;margin:0}
-    .wrap{position:absolute;inset:0;overflow:hidden;color:#fff;font:14px/1.35 "Lilita One","Lilita One Fallback",system-ui,sans-serif;
+    .wrap{position:absolute;inset:0;overflow:hidden;color:#fff;font:14px/1.3 "Lilita One","Lilita One Fallback",system-ui,sans-serif;
       background:#2a2416 center top/100% auto;-webkit-tap-highlight-color:transparent;user-select:none}
-    .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 45%,rgba(20,14,6,.55) 100%)}
-    .scroll{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:none;padding-bottom:14px}
-    .scroll::-webkit-scrollbar{display:none}
+    .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0) 40%,rgba(20,14,6,.6) 100%)}
+    .page{position:absolute;inset:0;display:flex;flex-direction:column;gap:5px;padding:5px 7px 7px;overflow:hidden}
     /* Contour brun du jeu */
     .ol{text-shadow:1.3px 0 #1a1006,-1.3px 0 #1a1006,0 1.3px #1a1006,0 -1.3px #1a1006,1px 1px #1a1006,-1px 1px #1a1006,1px -1px #1a1006,-1px -1px #1a1006,0 2px 3px rgba(0,0,0,.5)}
     .gold{color:#ffd24a}
-    .top{position:relative;z-index:3;display:flex;align-items:center;gap:4px;padding:6px 6px 0}
-    .back{flex:none;width:64px;height:50px;background:center/contain no-repeat;cursor:pointer;transition:transform .1s}
+    .top{flex:none;position:relative;z-index:3;display:flex;align-items:center;gap:4px}
+    .back{flex:none;width:58px;height:45px;background:center/contain no-repeat;cursor:pointer;transition:transform .1s}
     .back:active{transform:scale(.93)}
-    .plate{flex:1;min-width:0;height:56px;display:flex;flex-direction:column;justify-content:center;padding:4px 46px 6px 12px;background:left center/100% 100% no-repeat}
-    .plate .name{font-size:19px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .plate .meta{display:flex;align-items:center;gap:5px;font-size:12px;margin-top:2px}
-    .plate .meta img{height:15px}
-    .star{flex:none;width:40px;height:40px;display:flex;align-items:center;justify-content:center;font-size:28px;cursor:pointer;
-      color:#ffd24a;text-shadow:0 0 2px #1a1006,0 0 2px #1a1006,0 2px 4px rgba(0,0,0,.6)}
-    .star.off{color:rgba(255,255,255,.55)}
-    .hero{position:relative;height:var(--hero,330px);display:flex;align-items:center;justify-content:center;pointer-events:none;margin-top:-6px}
-    .hero > img{max-width:122%;max-height:108%;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,.55));
+    .plate{flex:1;min-width:0;height:50px;display:flex;flex-direction:column;justify-content:center;padding:2px 44px 5px 11px;background:left center/100% 100% no-repeat}
+    .plate .name{font-size:18px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .plate .meta{display:flex;align-items:center;gap:5px;font-size:11px;margin-top:2px}
+    .plate .meta img{height:14px}
+    .star{flex:none;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:26px;cursor:pointer;
+      color:#ffd24a;text-shadow:0 0 2px #1a1006,0 0 2px #1a1006,0 2px 4px rgba(0,0,0,.6);transition:transform .1s}
+    .star:active{transform:scale(.85)} .star.off{color:rgba(255,255,255,.55)}
+    /* L'illustration prend toute la place restante : jamais de défilement */
+    .hero{flex:1 1 auto;min-height:90px;position:relative;display:flex;align-items:center;justify-content:center;pointer-events:none;margin:-4px -7px 0}
+    .hero > img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 18px rgba(0,0,0,.55));
       animation:float 6s ease-in-out infinite;transform-origin:50% 90%}
-    @keyframes float{0%,100%{transform:translateY(0) scale(1.05)}50%{transform:translateY(-5px) scale(1.05)}}
-    .arrow{position:absolute;top:50%;margin-top:-22px;width:30px;height:44px;pointer-events:auto;cursor:pointer;color:#ffd24a;font-size:34px;
-      display:flex;align-items:center;justify-content:center}
-    .arrow.l{left:4px}.arrow.r{right:4px}
+    @keyframes float{0%,100%{transform:translateY(0) scale(1.08)}50%{transform:translateY(-5px) scale(1.08)}}
+    .arrow{position:absolute;top:50%;margin-top:-22px;width:30px;height:44px;pointer-events:auto;cursor:pointer;color:#ffd24a;font-size:32px;
+      display:flex;align-items:center;justify-content:center;transition:transform .1s}
+    .arrow:active{transform:scale(.85)} .arrow.l{left:6px}.arrow.r{right:6px}
     /* Cadres de statut du jeu en 3 morceaux */
-    .pill{position:relative;display:flex;align-items:center;height:34px;min-width:0}
+    .pill{position:relative;display:flex;align-items:center;height:29px;min-width:0}
     .pill > .fl,.pill > .fc,.pill > .fr{position:absolute;top:0;bottom:0;background-size:100% 100%;background-repeat:no-repeat}
-    .pill > .fl{left:0;width:9px}.pill > .fr{right:0;width:9px}.pill > .fc{left:9px;right:9px}
-    .pill > .in{position:relative;display:flex;align-items:center;gap:6px;width:100%;padding:0 10px}
-    .pill .lab{height:17px;flex:none}
-    .pill .val{margin-left:auto;font-size:18px;white-space:nowrap;font-variant-numeric:tabular-nums}
-    .pill.small{height:30px}.pill.small .val{font-size:15px}.pill.small .lab{height:14px}
-    .chips{position:absolute;left:8px;right:8px;bottom:4px;display:flex;gap:6px;pointer-events:auto}
+    .pill > .fl{left:0;width:8px}.pill > .fr{right:0;width:8px}.pill > .fc{left:8px;right:8px}
+    .pill > .in{position:relative;display:flex;align-items:center;gap:5px;width:100%;padding:0 9px}
+    .pill .lab{height:15px;flex:none}
+    .pill .val{margin-left:auto;font-size:16px;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}
+    .pill.small{height:27px}.pill.small .val{font-size:14px}.pill.small .lab{height:13px}
+    .chips{position:absolute;left:7px;right:7px;bottom:2px;display:flex;gap:5px;pointer-events:auto}
     .chips .pill{flex:0 1 auto}
-    .block{margin:6px 8px 0;padding:8px;border-radius:10px;background:rgba(18,14,8,.55);box-shadow:inset 0 0 0 1px rgba(255,210,120,.22)}
-    .lvrow{display:flex;align-items:center;gap:8px}
+    .block{flex:none;padding:6px;border-radius:10px;background:rgba(18,14,8,.6);box-shadow:inset 0 0 0 1px rgba(255,210,120,.22);display:flex;flex-direction:column;gap:5px}
+    .lvrow{display:flex;align-items:center;gap:7px}
     .lvrow .pill{flex:0 0 46%}
-    .exp{position:relative;flex:1;height:22px;background:center/100% 100% no-repeat}
+    .exp{position:relative;flex:1;height:20px;background:center/100% 100% no-repeat}
     .exp i{position:absolute;inset:0;background:left center/100% 100% no-repeat;clip-path:inset(0 calc(100% - var(--p)) 0 0)}
-    .exp b{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:12px;font-weight:400}
-    .stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
-    .stat{display:flex;gap:4px}
+    .exp b{position:absolute;right:6px;top:50%;transform:translateY(-50%);font-size:11px;font-weight:400}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:5px}
+    .stat{display:flex;gap:3px;min-width:0}
     .stat .pill:first-child{flex:1}
-    .stat .bonus{flex:0 0 64px}.stat .bonus .val{font-size:14px;margin:0 auto}
-    .spheres{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
-    .sph{display:flex;align-items:center;gap:6px;flex:1;min-width:150px;cursor:pointer}
-    .sph .fr0{position:relative;width:38px;height:38px;flex:none;background:center/100% 100% no-repeat}
-    .sph .fr0 img{position:absolute;inset:5px;width:28px;height:28px;object-fit:contain}
+    .stat .bonus{flex:0 0 54px}.stat .bonus .val{font-size:12.5px;margin:0 auto}
+    .spheres{display:flex;gap:5px}
+    .sph{display:flex;align-items:center;gap:5px;flex:1;min-width:0;cursor:pointer}
+    .sph .fr0{position:relative;width:31px;height:31px;flex:none;background:center/100% 100% no-repeat}
+    .sph .fr0 img{position:absolute;inset:4px;width:23px;height:23px;object-fit:contain}
     .sph .fr0 i{position:absolute;inset:0;background:center/100% 100% no-repeat}
-    .sph .pill{flex:1}.sph .pill .val{margin:0;font-size:14px;overflow:hidden;text-overflow:ellipsis}
-    .actions{display:grid;grid-template-columns:1fr 1fr;gap:6px 10px;margin:8px 10px 0}
-    .gbtn{position:relative;aspect-ratio:140/62;background:center/100% 100% no-repeat;cursor:pointer;display:flex;align-items:center;justify-content:center;
-      transition:transform .08s,filter .1s}
-    .gbtn:active{transform:scale(.95);filter:brightness(1.15)}
-    .gbtn span{font-size:18px;padding-bottom:3px}
+    .sph .pill{flex:1}.sph .pill .val{margin:0;font-size:13px;overflow:hidden;text-overflow:ellipsis}
+    /* Boutons du jeu : une seule rangée compacte, texte centré sur la face du bouton */
+    .actions{flex:none;display:flex;gap:5px}
+    .gbtn{flex:1;min-width:0;position:relative;height:40px;background:center/100% 100% no-repeat;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;padding:0 4px 3px;transition:transform .08s,filter .1s}
+    .gbtn:active{transform:scale(.94);filter:brightness(1.15)}
+    .gbtn span{font-size:15px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
     .gbtn.off{filter:grayscale(1) brightness(.62)}
-    .skills{margin:8px 6px 0;display:flex;flex-direction:column;gap:6px}
-    .skill{cursor:pointer}
-    .skill .bar{position:relative;aspect-ratio:640/94;background:left center/100% 100% no-repeat;display:flex;align-items:center;padding:10% 16px 0 5%}
-    .skill .bar.badge{aspect-ratio:auto;height:40px;padding-left:8px;gap:8px;background:rgba(18,14,8,.8);border-radius:8px 8px 0 0;box-shadow:inset 0 0 0 1px rgba(255,210,120,.25)}
-    .skill .bar.badge img{height:28px}
-    .skill .bar b{flex:1;min-width:0;font-size:17px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .skill .bar small{font-size:15px;color:#ffd24a}
-    .skill p{margin:-6px 4px 0;padding:8px 10px 9px;border-radius:0 0 10px 10px;background:rgba(12,10,8,.72);box-shadow:inset 0 0 0 1px rgba(255,210,120,.16);
-      font:12.5px/1.4 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;color:#f1ead8;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-    .skill.open p{-webkit-line-clamp:unset;display:block}
+    /* Compétences : des boutons, le détail s'ouvre dans une fenêtre */
+    .skills{flex:none;display:grid;grid-template-columns:repeat(var(--n,2),1fr);gap:5px}
+    .sk{position:relative;height:44px;border-radius:9px;cursor:pointer;overflow:hidden;background:rgba(14,11,7,.82);
+      box-shadow:inset 0 0 0 1px rgba(255,210,120,.3),0 2px 4px rgba(0,0,0,.4);display:flex;flex-direction:column;justify-content:flex-end;
+      padding:0 8px 5px;transition:transform .08s,box-shadow .15s}
+    .sk:active{transform:scale(.96)} .sk:hover{box-shadow:inset 0 0 0 1px rgba(255,210,120,.65),0 2px 4px rgba(0,0,0,.4)}
+    .sk .lb{position:absolute;left:0;top:0;height:22px;width:100%;background:left top/auto 100% no-repeat}
+    .sk .lb.wide{background-size:auto 210%}
+    .sk b{font-size:12.5px;font-weight:400;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:30px}
+    .sk small{position:absolute;right:7px;bottom:5px;font-size:12px;color:#ffd24a}
+    /* Fenêtre de détail */
+    .pop{position:absolute;inset:0;z-index:10;display:flex;align-items:flex-end;justify-content:center;padding:10px;background:rgba(0,0,0,.45);
+      opacity:0;pointer-events:none;transition:opacity .16s}
+    .pop.on{opacity:1;pointer-events:auto}
+    .card{width:100%;max-height:80%;display:flex;flex-direction:column;border-radius:12px;overflow:hidden;background:rgba(14,11,7,.96);
+      box-shadow:inset 0 0 0 1.5px rgba(255,210,120,.45),0 8px 24px rgba(0,0,0,.6);transform:translateY(18px);transition:transform .18s ease-out}
+    .pop.on .card{transform:none}
+    .card .bar{flex:none;position:relative;aspect-ratio:640/94;background:left center/100% 100% no-repeat;display:flex;align-items:center;padding:10% 14px 0 5%}
+    .card .bar.badge{aspect-ratio:auto;height:44px;padding:0 12px;gap:8px;background:none;border-bottom:1px solid rgba(255,210,120,.25)}
+    .card .bar.badge img{height:30px}
+    .card .bar b{flex:1;min-width:0;font-size:17px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .card .bar small{font-size:15px;color:#ffd24a}
+    .card p{padding:8px 14px 10px;overflow-y:auto;font:13.5px/1.5 "Segoe UI Variable","Segoe UI",system-ui,sans-serif;color:#f1ead8;user-select:text}
+    .card .x{flex:none;margin:0 auto 10px;width:130px}
   </style>
-  <div class="wrap"><div class="bg" style="display:none"></div><div class="shade"></div><div class="scroll"></div></div>`;
-  const bgEl = root.querySelector('.bg');
-  const scrollEl = root.querySelector('.scroll');
-  const openSkills = new Set();
+  <div class="wrap"><div class="shade"></div><div class="page"></div><div class="pop"></div></div>`;
+  const scrollEl = root.querySelector('.page');
+  const popEl = root.querySelector('.pop');
+  let openSkill = -1;
   let lastKey = '';
-  let lastId = null;
+  let lastPop = '';
 
   const ASSETS_FALLBACK = 'https://assets.rebornbf.com/assets/original/';
   const wrapEl = root.querySelector('.wrap');
@@ -207,78 +222,93 @@ try{
       <i class="fl" style="background-image:url('${A}${f}l.png')"></i><i class="fc" style="background-image:url('${A}${f}c.png')"></i><i class="fr" style="background-image:url('${A}${f}r.png')"></i>
       <div class="in">${opts.icon ? `<img class="lab" src="${esc(opts.icon)}" alt="">` : ''}${opts.html || ''}</div></div>`;
   }
+  const isWide = (s) => /\/(leader|bb)\.png/.test(s.label || '');
+  const shortName = (s) => {
+    const m = (s.label || '').match(/\/(leader|bb|sbb|ubb|extra)\.png/);
+    return m ? { leader: 'Leader', bb: 'BB', sbb: 'SBB', ubb: 'UBB', extra: 'Extra' }[m[1]] : '';
+  };
 
-  function render(d) {
-    const key = JSON.stringify(d) + '|' + [...openSkills].join(',') + '|' + host.clientHeight;
-    if (key === lastKey) return;
-    lastKey = key;
-    const keepScroll = lastId === d.id ? scrollEl.scrollTop : 0;
-    lastId = d.id;
-    const A = d.assets || ASSETS_FALLBACK;
-    wrapEl.style.backgroundImage = `url('${A}common/base.jpg')`;
-    const fuseOk = canFuse(d), evoOk = !d.omni;
-    const rarity = d.rarityImg ? `<img src="${esc(d.rarityImg)}" alt="${esc(d.rarityText)}">` : (d.stars ? `<span class="gold">${esc(d.stars)}</span>` : '');
-    const [lvNow, lvMax] = (d.lv || '').split('/');
-    const heroH = Math.round(Math.min(380, Math.max(230, host.clientHeight * 0.44)));
-    const val = (t, cls) => `<span class="val ol${cls ? ' ' + cls : ''}">${esc(t)}</span>`;
-    const btn = (a, img, label, off, title) => `<div class="gbtn${off ? ' off' : ''}" data-a="${a}" title="${esc(title || '')}" style="background-image:url('${A}${img}')"><span class="ol">${esc(label)}</span></div>`;
-    scrollEl.innerHTML = `<div class="top">
-        <div class="back" data-a="back" title="Retour" style="background-image:url('${A}header/header_title_btn1.png')"></div>
-        <div class="plate" style="background-image:url('${A}header/header_title_base.png')">
-          <div class="name ol">${esc(d.name)}</div>
-          <div class="meta ol">${d.element ? `<img src="${esc(d.element)}" alt="">` : ''}<span>${esc(d.no)}</span>${rarity}</div></div>
-        ${d.hasFavBtn ? `<div class="star${d.fav ? '' : ' off'}" data-a="fav" title="Favori">${d.fav ? '★' : '☆'}</div>` : ''}
-      </div>
-      <div class="hero" style="--hero:${heroH}px">
-        ${d.art ? `<img src="${esc(d.art)}" alt="">` : ''}
-        <div class="arrow l ol" data-a="prev" title="Unité précédente">◀</div>
-        <div class="arrow r ol" data-a="next" title="Unité suivante">▶</div>
-        <div class="chips">
-          ${d.type ? pill(A, { cls: 'small', icon: d.typeIcon, html: val(d.type, 'gold'), attr: ' data-a="type"' }) : ''}
-          ${d.cost ? pill(A, { cls: 'small', icon: d.costIcon, html: val(d.cost) }) : ''}
-          ${d.sp ? pill(A, { cls: 'small', icon: d.spIcon, html: val(d.sp) }) : ''}
-        </div>
-      </div>
-      <div class="block">
-        <div class="lvrow">
-          ${pill(A, { icon: d.lvIcon, html: val((lvNow || '').trim() + ' / ' + (lvMax || '').trim()) })}
-          <div class="exp" style="background-image:url('${A}unit_mix/unit_mix_bar_base.png');--p:${Math.max(0, Math.min(100, d.exp))}%">
-            <i style="background-image:url('${A}unit_mix/unit_mix_bar_gauge.png')"></i>
-            <b class="ol">${d.next && !/^-+$/.test(d.next) ? esc(d.next) : 'MAX'}</b></div>
-        </div>
-        <div class="stats">${d.stats.map((s) => `<div class="stat">${pill(A, { icon: s.icon, html: val(s.value) })}${s.bonus ? pill(A, { up: true, cls: 'bonus', html: val('+' + s.bonus, 'gold') }) : ''}</div>`).join('')}</div>
-        ${d.spheres.length ? `<div class="spheres">${d.spheres.map((s) => `<div class="sph" data-a="sphere" data-i="${s.i}">
-            <div class="fr0" style="background-image:url('${A}common/skill_frame_bg.png')">${s.icon ? `<img src="${esc(s.icon)}" alt="">` : ''}<i style="background-image:url('${A}common/skill_frame_0.png')"></i></div>
-            ${pill(A, { html: val(s.name || 'Vide') })}</div>`).join('')}</div>` : ''}
-      </div>
-      <div class="actions">
-        ${btn('fusion', 'common/button/sub_ss_btn1.png', 'Améliorer', !fuseOk, fuseOk ? '' : 'Niveau et compétences au maximum')}
-        ${btn('evolve', 'common/button/sub_ss_btn1.png', 'Évoluer', !evoOk, evoOk ? '' : 'Forme finale')}
-        ${d.hasHelper ? btn('helper', 'common/button/sub_ss_btn1.png', d.helper ? 'Aide ✓' : 'Aide') : ''}
-        ${d.switchBtn ? btn('switch', 'common/button/sub_ss_btn1.png', 'Changer') : ''}
-      </div>
-      <div class="skills">${d.skills.map((s) => {
-        const wide = /\/(leader|bb)\.png/.test(s.label || '');
-        const head = wide
+  function renderPop(d, A) {
+    const s = d.skills.find((k) => k.i === openSkill);
+    const key = s ? JSON.stringify(s) : '';
+    if (key !== lastPop) {
+      lastPop = key;
+      if (s) {
+        const head = isWide(s)
           ? `<div class="bar" style="background-image:url('${esc(s.label)}')"><b class="ol gold">${esc(s.name)}</b>${s.level ? `<small class="ol">${esc(s.level)}</small>` : ''}</div>`
           : `<div class="bar badge">${s.label ? `<img src="${esc(s.label)}" alt="">` : ''}<b class="ol gold">${esc(s.name)}</b>${s.level ? `<small class="ol">${esc(s.level)}</small>` : ''}</div>`;
-        return `<div class="skill${openSkills.has(s.i) ? ' open' : ''}" data-a="skill" data-i="${s.i}">${head}<p>${esc(s.text)}</p></div>`;
-      }).join('')}</div>`;
-    if (keepScroll) scrollEl.scrollTop = keepScroll;
+        popEl.innerHTML = `<div class="card">${head}<p>${esc(s.text)}</p>
+          <div class="gbtn x" data-a="close" style="background-image:url('${A}common/button/sub_ss_btn1.png')"><span class="ol">Fermer</span></div></div>`;
+      }
+    }
+    popEl.classList.toggle('on', !!s);
+  }
+
+  function render(d) {
+    const A = d.assets || ASSETS_FALLBACK;
+    const key = JSON.stringify(d);
+    if (key !== lastKey) {
+      lastKey = key;
+      wrapEl.style.backgroundImage = `url('${A}common/base.jpg')`;
+      const fuseOk = canFuse(d), evoOk = !d.omni;
+      const rarity = d.rarityImg ? `<img src="${esc(d.rarityImg)}" alt="${esc(d.rarityText)}">` : (d.stars ? `<span class="gold">${esc(d.stars)}</span>` : '');
+      const [lvNow, lvMax] = (d.lv || '').split('/');
+      const val = (t, cls) => `<span class="val ol${cls ? ' ' + cls : ''}">${esc(t)}</span>`;
+      const btn = (a, label, off, title) => `<div class="gbtn${off ? ' off' : ''}" data-a="${a}" title="${esc(title || '')}" style="background-image:url('${A}common/button/sub_ss_btn1.png')"><span class="ol">${esc(label)}</span></div>`;
+      const n = d.skills.length;
+      scrollEl.innerHTML = `<div class="top">
+          <div class="back" data-a="back" title="Retour" style="background-image:url('${A}header/header_title_btn1.png')"></div>
+          <div class="plate" style="background-image:url('${A}header/header_title_base.png')">
+            <div class="name ol">${esc(d.name)}</div>
+            <div class="meta ol">${d.element ? `<img src="${esc(d.element)}" alt="">` : ''}<span>${esc(d.no)}</span>${rarity}</div></div>
+          ${d.hasFavBtn ? `<div class="star${d.fav ? '' : ' off'}" data-a="fav" title="Favori">${d.fav ? '★' : '☆'}</div>` : ''}
+        </div>
+        <div class="hero">
+          ${d.art ? `<img src="${esc(d.art)}" alt="">` : ''}
+          <div class="arrow l ol" data-a="prev" title="Unité précédente">◀</div>
+          <div class="arrow r ol" data-a="next" title="Unité suivante">▶</div>
+          <div class="chips">
+            ${d.type ? pill(A, { cls: 'small', icon: d.typeIcon, html: val(d.type, 'gold'), attr: ' data-a="type"' }) : ''}
+            ${d.cost ? pill(A, { cls: 'small', icon: d.costIcon, html: val(d.cost) }) : ''}
+            ${d.sp ? pill(A, { cls: 'small', icon: d.spIcon, html: val(d.sp) }) : ''}
+          </div>
+        </div>
+        <div class="block">
+          <div class="lvrow">
+            ${pill(A, { icon: d.lvIcon, html: val((lvNow || '').trim() + ' / ' + (lvMax || '').trim()) })}
+            <div class="exp" style="background-image:url('${A}unit_mix/unit_mix_bar_base.png');--p:${Math.max(0, Math.min(100, d.exp))}%">
+              <i style="background-image:url('${A}unit_mix/unit_mix_bar_gauge.png')"></i>
+              <b class="ol">${d.next && !/^-+$/.test(d.next) ? esc(d.next) : 'MAX'}</b></div>
+          </div>
+          <div class="stats">${d.stats.map((s) => `<div class="stat">${pill(A, { icon: s.icon, html: val(s.value) })}${s.bonus ? pill(A, { up: true, cls: 'bonus', html: val('+' + s.bonus, 'gold') }) : ''}</div>`).join('')}</div>
+          ${d.spheres.length ? `<div class="spheres">${d.spheres.map((s) => `<div class="sph" data-a="sphere" data-i="${s.i}">
+              <div class="fr0" style="background-image:url('${A}common/skill_frame_bg.png')">${s.icon ? `<img src="${esc(s.icon)}" alt="">` : ''}<i style="background-image:url('${A}common/skill_frame_0.png')"></i></div>
+              ${pill(A, { html: val(s.name || 'Vide') })}</div>`).join('')}</div>` : ''}
+        </div>
+        <div class="actions">
+          ${btn('fusion', 'Améliorer', !fuseOk, fuseOk ? '' : 'Niveau et compétences au maximum')}
+          ${btn('evolve', 'Évoluer', !evoOk, evoOk ? '' : 'Forme finale')}
+          ${d.hasHelper ? btn('helper', d.helper ? 'Aide ✓' : 'Aide') : ''}
+          ${d.switchBtn ? btn('switch', 'Changer') : ''}
+        </div>
+        ${n ? `<div class="skills" style="--n:${n > 3 ? Math.ceil(n / 2) : n}">${d.skills.map((s) => `<div class="sk" data-a="skill" data-i="${s.i}" title="${esc(s.text)}">
+            <div class="lb${isWide(s) ? ' wide' : ''}" style="background-image:url('${esc(s.label)}')"></div>
+            <b class="ol gold">${esc(s.name || shortName(s))}</b>${s.level ? `<small class="ol">${esc(s.level)}</small>` : ''}</div>`).join('')}</div>` : ''}`;
+    }
+    renderPop(d, A);
   }
 
   root.addEventListener('click', (e) => {
+    if (e.target === popEl) { openSkill = -1; schedule(); return; }
     const el = e.target.closest('[data-a]');
     if (!el) return;
     const a = el.dataset.a;
-    if (a === 'skill') {
-      const i = +el.dataset.i;
-      if (openSkills.has(i)) openSkills.delete(i); else openSkills.add(i);
-      schedule();
-      return;
-    }
+    if (a === 'skill') { openSkill = +el.dataset.i; schedule(); return; }
+    if (a === 'close') { openSkill = -1; schedule(); return; }
     act(a, el.dataset.i);
   });
+  window.addEventListener('keydown', (e) => { if (e.key === 'Escape' && openSkill >= 0) { openSkill = -1; schedule(); } });
+
 
   // Une fenêtre du jeu est ouverte (détails, choix d'aide, sphères…) : on s'efface pour la laisser au-dessus
   function gameDialogOpen() {
@@ -304,7 +334,7 @@ try{
 
   const onNav = () => {
     if (location.pathname !== '/units/info') host.style.display = 'none'; // départ : disparaît tout de suite
-    openSkills.clear();
+    openSkill = -1;
     schedule();
   };
   ['pushState', 'replaceState'].forEach((k) => {
