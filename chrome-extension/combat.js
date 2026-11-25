@@ -9,7 +9,7 @@ try{
 
   const WANT_AUTO = !!window.__rbfSettings.opt.always_auto;
   const WANT_X2 = !!window.__rbfSettings.opt.always_x2;
-  const TURBO = (window.__rbfSettings.opt.turbo2?2:window.__rbfSettings.opt.turbo15?1.5:1); // 1 = vitesse normale du jeu, 1.5 ou 2 = encore plus vite (en plus du x2 du jeu)
+  const TURBO = (window.__rbfSettings.opt.turbo2?2:window.__rbfSettings.opt.turbo15?1.5:1); // 1 = vitesse normale du jeu, sinon multiplicateur (x1,5 à x8) en plus du x2 du jeu
   const HIT_AUTO = { x: 506, y: 494 };   // boutons du combat (coordonnées du jeu)
   const HIT_SPEED = { x: 582, y: 497 };
 
@@ -57,7 +57,7 @@ try{
     if (game.loop.callback === wrapped) return;
     const cb = game.loop.callback;
     wrapped = function (time, delta) {
-      return cb.call(this, time, level > 1 && armed && location.pathname.startsWith('/battle') ? Math.min(delta * level, 100) : delta);
+      return cb.call(this, time, level > 1 && armed && location.pathname.startsWith('/battle') ? Math.min(delta, 50) * level : delta);
     };
     game.loop.callback = wrapped;
   }

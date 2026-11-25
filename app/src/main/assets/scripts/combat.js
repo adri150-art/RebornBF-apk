@@ -6,7 +6,7 @@
 
   const WANT_AUTO = __AUTO__;
   const WANT_X2 = __X2__;
-  const TURBO = __TURBO__; // 1 = vitesse normale du jeu, 1.5 ou 2 = encore plus vite (en plus du x2 du jeu)
+  const TURBO = __TURBO__; // 1 = vitesse normale du jeu, sinon multiplicateur (x1,5 à x8) en plus du x2 du jeu
   const HIT_AUTO = { x: 506, y: 494 };   // boutons du combat (coordonnées du jeu)
   const HIT_SPEED = { x: 582, y: 497 };
 
@@ -54,7 +54,7 @@
     if (game.loop.callback === wrapped) return;
     const cb = game.loop.callback;
     wrapped = function (time, delta) {
-      return cb.call(this, time, level > 1 && armed && location.pathname.startsWith('/battle') ? Math.min(delta * level, 100) : delta);
+      return cb.call(this, time, level > 1 && armed && location.pathname.startsWith('/battle') ? Math.min(delta, 50) * level : delta);
     };
     game.loop.callback = wrapped;
   }

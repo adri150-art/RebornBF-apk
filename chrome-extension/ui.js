@@ -83,6 +83,7 @@ try{
     .bot.on{background:linear-gradient(180deg,rgba(255,210,120,.18),rgba(255,210,120,.04));box-shadow:inset 0 0 0 1.5px #e0a52a}
     .bot.on .pill{background:#e0a52a;color:#2a1a04;font-weight:700}
     .chips{display:flex;gap:8px}
+    .chips.tgrid{display:grid;grid-template-columns:repeat(3,1fr)}.chips.tgrid .chip{height:38px;font-size:14px}
     .chip{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border-radius:10px;cursor:pointer;
       font:15px/1 "Lilita One",system-ui,sans-serif;color:#cfc6b0;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px rgba(255,210,120,.2);transition:all .15s}
     .chip i{font-style:normal}
@@ -148,6 +149,17 @@ try{
   }
 
   // ───────── Menu rapide ─────────
+  // Niveaux de Turbo des combats (enregistrés tout de suite, même en plein combat)
+  const TURBOS = [[1, '🐢 Normal'], [1.5, 'x1,5'], [2, 'x2'], [3, 'x3'], [4, 'x4'], [8, '⚡ x8']];
+  function turboChips(tl) {
+    return `<div class="chips tgrid" style="margin-bottom:8px">${TURBOS.map(([v, l]) => `<div class="chip${tl === v ? ' on' : ''}" data-t="${v}">${l}</div>`).join('')}</div>`;
+  }
+  function setTurbo(el, root) {
+    try { localStorage.setItem('rbf_turbo', el.dataset.t); } catch (err) { /* rien */ }
+    root.querySelectorAll('[data-t]').forEach((c) => c.classList.toggle('on', c === el));
+    toast(+el.dataset.t > 1 ? 'Turbo x' + String(el.dataset.t).replace('.', ',') + ' pour les combats' : 'Vitesse normale');
+  }
+
   function quick() {
     if (sheet.classList.contains('on')) { closeAll(); return; }
     panel.classList.remove('on');
@@ -158,8 +170,7 @@ try{
     let html = '<div class="grip"></div>';
     // Turbo des combats : change tout de suite, même en plein combat
     const tl = parseFloat(localStorage.getItem('rbf_turbo')) || (S.opt && S.opt.turbo2 ? 2 : S.opt && S.opt.turbo15 ? 1.5 : 1);
-    html += `<div class="chips" style="margin-bottom:8px">${[[1, '🐢 Normal'], [1.5, '🚀 Turbo x1,5'], [2, '⚡ Turbo x2']]
-      .map(([v, l]) => `<div class="chip${tl === v ? ' on' : ''}" data-t="${v}">${l}</div>`).join('')}</div>`;
+    html += turboChips(tl);
     if (qm) html += `<button class="btn gold" data-a="farm" data-id="${qm[1]}">🔁  Farmer cette quête</button>`;
     else if (bot.quest) html += `<button class="btn gold" data-a="resume" data-id="${esc(bot.quest)}">▶  Reprendre ma dernière quête</button>`;
     html += '<div class="grid">';
@@ -179,12 +190,7 @@ try{
 
   sheet.addEventListener('click', (e) => {
     const t = e.target.closest('[data-t]');
-    if (t) {
-      try { localStorage.setItem('rbf_turbo', t.dataset.t); } catch (err) { /* rien */ }
-      sheet.querySelectorAll('[data-t]').forEach((c) => c.classList.toggle('on', c === t));
-      toast(+t.dataset.t > 1 ? 'Turbo x' + String(t.dataset.t).replace('.', ',') + ' activé pour les combats' : 'Vitesse normale');
-      return;
-    }
+    if (t) { setTurbo(t, sheet); return; }
     const el = e.target.closest('[data-a]');
     if (!el) return;
     const a = el.dataset.a;
@@ -239,9 +245,8 @@ try{
     h += '</div>';
     h += '<div class="sec">Combat</div><div class="chips">';
     h += chip('always_x2', '⏩', 'Toujours x2', S.opt.always_x2) + chip('always_auto', '🤖', 'Toujours AUTO', S.opt.always_auto);
-    h += '</div><div class="sec">Turbo<em>en plus du x2 du jeu</em></div><div class="chips">';
-    h += chip('turbo_off', '🐢', 'Normal', !S.opt.turbo15 && !S.opt.turbo2) + chip('turbo15', '🚀', 'x1,5', S.opt.turbo15) + chip('turbo2', '⚡', 'x2', S.opt.turbo2);
-    h += '</div>';
+    h += '</div><div class="sec">Turbo<em>en plus du x2 du jeu · s\'applique tout de suite</em></div>';
+    h += turboChips(parseFloat(localStorage.getItem('rbf_turbo')) || (S.opt.turbo2 ? 2 : S.opt.turbo15 ? 1.5 : 1));
     h += `<div class="sec">Mes scripts<em>${ANDROID ? 'appui long' : 'clic droit'} pour supprimer</em></div><div class="card">`;
     if (!S.custom.length) h += '<p class="empty">Aucun script. Ajoute ton bot d\'arène ou un autre script Tampermonkey.</p>';
     S.custom.forEach((c, i) => { h += item('custom:' + i, '📄', c.name || 'Script', c.on !== false ? 'Activé' : 'Désactivé', c.on !== false); });
@@ -272,6 +277,8 @@ try{
     if (e.target.closest('[data-close]')) { closeAll(); return; }
     if (e.target.closest('[data-a="fullscreen"]')) { N.action('fullscreen'); return; }
     if (e.target.closest('[data-add]')) { addScript(); return; }
+    const tt = e.target.closest('[data-t]');
+    if (tt) { setTurbo(tt, panel); return; }
     const el = e.target.closest('[data-k]');
     if (!el) return;
     const [kind, key] = el.dataset.k.split(':');
