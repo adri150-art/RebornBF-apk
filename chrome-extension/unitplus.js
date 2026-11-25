@@ -29,10 +29,10 @@ try{
     [class*="unit-info-module__"][class*="__skillRow"]{border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)}
 
     /* Barre d'actions ajoutée par l'appli */
-    #rbf-unit-actions{position:fixed;display:flex;gap:8px;z-index:5;
+    #rbf-unit-actions{position:fixed;display:flex;height:50px;align-items:center;gap:8px;z-index:5;
       padding:6px;border-radius:18px;background:rgba(8,10,20,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
       border:1px solid rgba(255,214,120,.25);box-shadow:0 8px 20px rgba(0,0,0,.45)}
-    #rbf-unit-actions button{flex:1;min-width:0;height:40px;border-radius:13px;font-size:13px!important;white-space:nowrap;border:1px solid rgba(255,214,120,.55);cursor:pointer;
+    #rbf-unit-actions button{flex:1;min-width:0;height:38px;border-radius:13px;font-size:13px!important;white-space:nowrap;border:1px solid rgba(255,214,120,.55);cursor:pointer;
       font:800 13px/1 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:.3px;color:#1b1206;
       background:linear-gradient(180deg,#ffe08a 0%,#f2b33d 55%,#d98c1c 100%);
       box-shadow:0 6px 14px rgba(0,0,0,.45),inset 0 1px 0 rgba(255,255,255,.6);text-shadow:0 1px 0 rgba(255,255,255,.35);
@@ -83,15 +83,15 @@ try{
     const id = currentUnitId();
     if (!id) return;
     try { sessionStorage.setItem(PICK, JSON.stringify({ id, kind, t: Date.now(), back: location.pathname + location.search })); } catch (e) { /* rien */ }
-    const path = learned()[kind];
-    toast(kind === 'fusion' ? 'Ouverture de l\'amélioration…' : 'Ouverture de l\'évolution…');
-    if (path) go(path + '?id=' + encodeURIComponent(id) + '&base=' + encodeURIComponent(id));
-    else go('/units'); // on trouvera le bon bouton dans le menu Unit
+    // Adresses utilisées par le jeu lui-même : fusion avec l'unité en cible, page d'évolution de l'unité
+    const url = kind === 'fusion'
+      ? '/fusion?target=' + encodeURIComponent(id)
+      : '/units/info/evolve?id=' + encodeURIComponent(id);
+    sessionStorage.removeItem(PICK);
+    go(url);
   }
 
   function go(p) {
-    const a = $$('a[href]').find((x) => (x.getAttribute('href') || '') === p);
-    if (a) { a.click(); return; }
     try { if (window.next && window.next.router && window.next.router.push) { window.next.router.push(p); return; } } catch (e) { /* rien */ }
     location.assign(p);
   }
@@ -153,14 +153,20 @@ try{
 
   // Place la barre en bas de l'image de l'unité, sans rien changer à la mise en page du jeu
   function place(bar) {
-    const body = $('[class*="unit-info-module__"][class*="__body"]');
-    if (!body) { bar.style.display = 'none'; return; }
-    const r = body.getBoundingClientRect();
-    if (r.width === 0) { bar.style.display = 'none'; return; }
+    const right = $('[class*="unit-info-module__"][class*="__right"]');
+    const left = $('[class*="unit-info-module__"][class*="__left"]');
+    const sw = right && [...right.querySelectorAll('button')].filter((b) => b.getBoundingClientRect().width > 0)
+      .sort((a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top)[0]; // le plus bas : Switch / Changer
+    if (!sw || !left) { bar.style.display = 'none'; return; }
+    const s = sw.getBoundingClientRect();
+    const l = left.getBoundingClientRect();
+    const x0 = Math.round(l.right + 6), x1 = Math.round(s.left - 6);
+    if (x1 - x0 < 150) { bar.style.display = 'none'; return; }
+    const h = 50;
     bar.style.display = 'flex';
-    bar.style.left = Math.round(r.left + r.width * 0.31) + 'px';
-    bar.style.width = Math.round(r.width * 0.48) + 'px';
-    bar.style.top = Math.round(r.bottom - 60) + 'px';
+    bar.style.left = x0 + 'px';
+    bar.style.width = (x1 - x0) + 'px';
+    bar.style.top = Math.round(s.top + s.height / 2 - h / 2) + 'px';
   }
 
   window.addEventListener('resize', () => { const b = $('#rbf-unit-actions'); if (b) place(b); });
