@@ -28,14 +28,13 @@ try{
     /* Compétences : ombre douce */
     [class*="unit-info-module__"][class*="__skillRow"]{border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)}
 
-    /* Colonne de boutons : copies du bouton bleu du jeu, tous de la même taille */
-    #rbf-unit-actions{position:fixed;z-index:30;display:flex;flex-direction:column;gap:6px;width:124px}
-    #rbf-unit-actions > button{position:relative!important;inset:auto!important;margin:0!important;flex:none;width:124px!important;height:42px!important}
-    /* Les images du cadre gardent sinon la position calculée pour le petit bouton d'origine */
-    #rbf-unit-actions > button img{inset:0!important;width:100%!important;height:100%!important;max-width:none!important;max-height:none!important}
-    #rbf-unit-actions .rbf-cap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:0 6px;
-      color:#fff;font-size:17px;line-height:1;white-space:nowrap;letter-spacing:.3px;pointer-events:none}
-    #rbf-unit-actions > button.rbf-off{filter:grayscale(1) brightness(.62)!important;cursor:not-allowed}
+    /* Colonne de boutons : copies du bouton bleu du jeu, agrandies sans déformer le cadre */
+    #rbf-unit-actions{position:fixed;z-index:30;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+    #rbf-unit-actions .rbf-slot{position:relative;flex:none}
+    #rbf-unit-actions .rbf-slot > button{position:absolute!important;left:0;top:0;margin:0!important;transform-origin:0 0}
+    #rbf-unit-actions .rbf-cap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:0 3px;
+      color:#fff;font-size:13px;line-height:1;white-space:nowrap;letter-spacing:.2px;pointer-events:none}
+    #rbf-unit-actions button.rbf-off{filter:grayscale(1) brightness(.62)!important}
     #rbf-toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);z-index:2147483600;padding:10px 16px;border-radius:12px;
       background:rgba(10,12,22,.92);border:1px solid rgba(255,206,110,.35);color:#f2f4fa;font:600 13px system-ui,sans-serif;
       box-shadow:0 8px 20px rgba(0,0,0,.5);pointer-events:none;transition:opacity .3s}
@@ -130,8 +129,14 @@ try{
   const favoriteBtn = () => $$('[class*="unit-info-module__"][class*="__favoriteButton"]').find((b) => !/__helperButton/.test(b.className));
   const togglesBox = () => $('[class*="unit-info-module__"][class*="__toggles"]');
 
+  const SCALE = 1.35; // agrandissement uniforme du bouton du jeu
+
   function makeButton(model, label, key) {
     const b = model.cloneNode(true);
+    const w = model.offsetWidth || 70, h = model.offsetHeight || 55;
+    b.style.width = w + 'px';
+    b.style.height = h + 'px';
+    b.style.transform = 'scale(' + SCALE + ')';
     b.querySelectorAll('[id]').forEach((e) => e.removeAttribute('id'));
     ['id', 'aria-pressed', 'aria-haspopup'].forEach((k) => b.removeAttribute(k));
     b.type = 'button';
@@ -144,7 +149,12 @@ try{
     const cs = src ? getComputedStyle(src) : null;
     if (cs) { cap.style.fontFamily = cs.fontFamily; cap.style.textShadow = cs.textShadow; }
     cap.textContent = label;
-    return b;
+    const slot = document.createElement('div');
+    slot.className = 'rbf-slot';
+    slot.style.width = Math.round(w * SCALE) + 'px';
+    slot.style.height = Math.round(h * SCALE) + 'px';
+    slot.appendChild(b);
+    return slot;
   }
 
   function setLabel(btn, label) {
@@ -203,8 +213,7 @@ try{
         const b = e.target.closest('button[data-k]');
         if (!b) return;
         e.preventDefault(); e.stopPropagation();
-        if (b.classList.contains('rbf-off')) { toast(b.dataset.why); return; }
-        const k = b.dataset.k;
+        const k = b.dataset.k; // grisé = rien à gagner, mais la page s'ouvre quand même
         if (k === 'favorite') { const f = favoriteBtn(); if (f) f.click(); }
         else if (k === 'helper') { const h = helperBtn(); if (h) h.click(); }
         else start(k);
@@ -212,12 +221,12 @@ try{
       document.body.appendChild(box);
     }
     toggles.style.visibility = 'hidden'; // les petits boutons d'origine restent là pour être actionnés
-    const [fav, help, fuse, evo] = box.children;
+    const [fav, help, fuse, evo] = [...box.children].map((slot) => slot.firstElementChild);
     const f = favoriteBtn();
     const isFav = f && /retir|remove|enlever/i.test((f.getAttribute('aria-label') || '') + ' ' + (f.innerText || ''));
     setLabel(fav, isFav ? 'Retirer ★' : '★ Favori');
     setLabel(help, helper.getAttribute('aria-pressed') === 'true' ? 'Aide ✓' : 'Aide');
-    fav.style.display = f ? '' : 'none';
+    fav.parentElement.style.display = f ? '' : 'none';
     setState(fuse, canFuse(), 'Niveau et compétences déjà au maximum');
     setState(evo, canEvolve(), 'Cette unité est à sa forme finale');
     place(box, toggles);
@@ -227,7 +236,8 @@ try{
     const t = toggles.getBoundingClientRect();
     if (!t.width) { box.style.display = 'none'; return; }
     box.style.display = 'flex';
-    box.style.left = Math.round(t.right - 124) + 'px';
+    box.style.left = 'auto';
+    box.style.right = Math.round(window.innerWidth - t.right) + 'px';
     box.style.top = Math.round(t.top) + 'px';
   }
 
