@@ -156,6 +156,10 @@ try{
     const nav = ls('rbf_nav', {});
     const qm = path.match(/^\/start\/(\d+)/);
     let html = '<div class="grip"></div>';
+    // Turbo des combats : change tout de suite, même en plein combat
+    const tl = parseFloat(localStorage.getItem('rbf_turbo')) || (S.opt && S.opt.turbo2 ? 2 : S.opt && S.opt.turbo15 ? 1.5 : 1);
+    html += `<div class="chips" style="margin-bottom:8px">${[[1, '🐢 Normal'], [1.5, '🚀 Turbo x1,5'], [2, '⚡ Turbo x2']]
+      .map(([v, l]) => `<div class="chip${tl === v ? ' on' : ''}" data-t="${v}">${l}</div>`).join('')}</div>`;
     if (qm) html += `<button class="btn gold" data-a="farm" data-id="${qm[1]}">🔁  Farmer cette quête</button>`;
     else if (bot.quest) html += `<button class="btn gold" data-a="resume" data-id="${esc(bot.quest)}">▶  Reprendre ma dernière quête</button>`;
     html += '<div class="grid">';
@@ -174,6 +178,13 @@ try{
   }
 
   sheet.addEventListener('click', (e) => {
+    const t = e.target.closest('[data-t]');
+    if (t) {
+      try { localStorage.setItem('rbf_turbo', t.dataset.t); } catch (err) { /* rien */ }
+      sheet.querySelectorAll('[data-t]').forEach((c) => c.classList.toggle('on', c === t));
+      toast(+t.dataset.t > 1 ? 'Turbo x' + String(t.dataset.t).replace('.', ',') + ' activé pour les combats' : 'Vitesse normale');
+      return;
+    }
     const el = e.target.closest('[data-a]');
     if (!el) return;
     const a = el.dataset.a;
@@ -279,6 +290,7 @@ try{
       // Un seul niveau de turbo à la fois
       S.opt.turbo15 = key === 'turbo15';
       S.opt.turbo2 = key === 'turbo2';
+      try { localStorage.setItem('rbf_turbo', key === 'turbo2' ? '2' : key === 'turbo15' ? '1.5' : '1'); } catch (err) { /* rien */ }
       el.parentElement.querySelectorAll('.chip').forEach((c) => c.classList.toggle('on', c === el));
       return;
     }

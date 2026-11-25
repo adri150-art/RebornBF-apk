@@ -16,7 +16,7 @@ PARTS = [
     ('unitplus.js', 'unitplus', 'S.opt.remaster', False),
     ('gameinfo.js', 'gameinfo', 'S.opt.infos', False),
     ('hd.js', 'hd', 'S.opt.hd', False),
-    ('combat.js', 'combat', '(S.opt.always_x2||S.opt.always_auto||S.opt.turbo15||S.opt.turbo2)', False),
+    ('combat.js', 'combat', 'true', False),
     ('farm.js', 'farm', 'S.bots.farm', False),
     ('aventure.js', 'aventure', 'S.bots.aventure', True),
 ]

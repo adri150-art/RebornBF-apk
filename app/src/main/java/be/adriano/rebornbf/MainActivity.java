@@ -539,7 +539,7 @@ public class MainActivity extends Activity {
         if (opt("hd", false)) sb.append(wrap(asset("hd.js"), false, "filtre HD"));
         boolean auto = opt("always_auto", false), x2 = opt("always_x2", true);
         String turbo = opt("turbo2", false) ? "2" : opt("turbo15", false) ? "1.5" : "1";
-        if (auto || x2 || !"1".equals(turbo)) {
+        {
             String c = asset("combat.js").replace("__AUTO__", String.valueOf(auto)).replace("__X2__", String.valueOf(x2)).replace("__TURBO__", turbo);
             sb.append(wrap(c, false, "combat"));
         }

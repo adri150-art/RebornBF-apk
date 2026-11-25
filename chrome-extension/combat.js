@@ -1,4 +1,4 @@
-(function(){if(window.top!==window)return;var S=window.__rbfSettings;if(!S||!((S.opt.always_x2||S.opt.always_auto||S.opt.turbo15||S.opt.turbo2)))return;
+(function(){if(window.top!==window)return;var S=window.__rbfSettings;if(!S||!(true))return;
 (function __rbfRun(){if(document.readyState==='loading'||!document.body){document.addEventListener('DOMContentLoaded',__rbfRun,{once:true});return;}
 try{
 // Combat : remet AUTO et/ou x2 tout seul à chaque combat, et « Turbo » accélère encore le combat (réglable dans l'appli).
@@ -26,18 +26,28 @@ try{
 
   // Turbo : on fait avancer le temps du jeu plus vite, seulement pendant les combats.
   // Tout suit le même rythme (animations, attaques, minuteries), donc le combat reste identique, juste plus rapide.
+  // Le jeu remet parfois sa boucle à neuf (nouveau combat, pause, retour sur l'appli) : on vérifie à chaque fois
+  // que notre accélérateur est toujours branché, et on le rebranche sinon.
+  // Niveau choisi en direct depuis le menu ☰ (sans recharger), sinon celui des réglages
+  let level = TURBO;
+  const readLevel = () => { const v = parseFloat(localStorage.getItem('rbf_turbo')); level = v > 0 ? v : TURBO; };
+  let wrapped = null;
   function turbo() {
-    if (TURBO <= 1 || !game || !game.loop || game.loop.__rbfTurbo || typeof game.loop.callback !== 'function') return;
+    readLevel();
+    if (!game || !game.loop || typeof game.loop.callback !== 'function') return;
+    if (game.loop.callback === wrapped) return;
     const cb = game.loop.callback;
-    game.loop.callback = function (time, delta) {
-      return cb.call(this, time, location.pathname.startsWith('/battle') ? Math.min(delta * TURBO, 100) : delta);
+    wrapped = function (time, delta) {
+      return cb.call(this, time, level > 1 && location.pathname.startsWith('/battle') ? Math.min(delta * level, 100) : delta);
     };
-    game.loop.__rbfTurbo = true;
+    game.loop.callback = wrapped;
   }
+
+  // Vérification rapide (4 fois par seconde) pour que le turbo démarre dès le début du combat
+  setInterval(() => { hook(); turbo(); }, 250);
 
   setInterval(() => {
     hook();
-    turbo();
     if (!location.pathname.startsWith('/battle')) return;
     let s = null;
     try {

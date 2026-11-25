@@ -94,7 +94,7 @@ function buildInjection(s) {
   if (s.opt.remaster) js += wrap(asset('unitplus.js'), false, "fiche d'unité");
   if (s.opt.infos) js += wrap(asset('gameinfo.js'), false, 'infos du jeu');
   if (s.opt.hd) js += wrap(asset('hd.js'), false, 'filtre HD');
-  if (s.opt.always_auto || s.opt.always_x2 || s.opt.turbo15 || s.opt.turbo2) {
+  {
     js += wrap(asset('combat.js').replace('__AUTO__', String(!!s.opt.always_auto)).replace('__X2__', String(!!s.opt.always_x2))
       .replace('__TURBO__', s.opt.turbo2 ? '2' : s.opt.turbo15 ? '1.5' : '1'), false, 'combat');
   }
