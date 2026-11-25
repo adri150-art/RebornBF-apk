@@ -1070,7 +1070,7 @@ public class MainActivity extends Activity {
         box.addView(button("+ Ajouter un script", false, v -> addScriptDialog(box)));
 
         section(box, "CONFORT");
-        optionRow(box, "remaster", "Remaster des fiches d'unité", "Boutons Améliorer / Évoluer sur la fiche, compétences lisibles en entier, cadres modernes.", true);
+        optionRow(box, "remaster", "Remaster des fiches d'unité", "Nouvelle fiche moderne : grande illustration, stats en cartes, compétences lisibles, actions groupées.", true);
         optionRow(box, "appfeel", "Style appli", "Boutons qui réagissent, transitions douces, plus de sélection de texte par erreur.", true);
         optionRow(box, "haptic", "Vibrations", "Petite vibration quand tu touches un bouton.", true);
         optionRow(box, "antipause", "Anti-pause", "Le jeu continue même si l'appli passe derrière ou si une notification arrive.", true);

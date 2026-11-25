@@ -232,7 +232,7 @@
     S.custom.forEach((c, i) => { h += item('custom:' + i, '📄', c.name || 'Script', c.on !== false ? 'Activé' : 'Désactivé', c.on !== false); });
     h += '<button class="add" data-add>＋ Ajouter un script</button></div>';
     h += '<div class="sec">Confort</div><div class="card">';
-    h += item('opt:remaster', '🃏', 'Fiche d\'unité remaster', 'Boutons Favori, Aide, Améliorer, Évoluer', S.opt.remaster);
+    h += item('opt:remaster', '🃏', 'Fiche d\'unité remaster', 'Nouvelle fiche moderne, grande illustration', S.opt.remaster);
     h += item('opt:appfeel', '✨', 'Style appli', 'Boutons qui réagissent, transitions douces', S.opt.appfeel);
     h += item('opt:antipause', '⏯️', 'Anti-pause', 'Le jeu continue quand la fenêtre est derrière', S.opt.antipause);
     h += item('opt:notifications', '🔔', 'Notifications', 'Prévient quand un bot s\'arrête', S.opt.notifications);
