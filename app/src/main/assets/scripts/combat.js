@@ -28,14 +28,33 @@
   // Niveau choisi en direct depuis le menu ☰ (sans recharger), sinon celui des réglages
   let level = TURBO;
   const readLevel = () => { const v = parseFloat(localStorage.getItem('rbf_turbo')); level = v > 0 ? v : TURBO; };
+  // Le combat doit démarrer à vitesse normale (le chargement accéléré fait planter le niveau) :
+  // le Turbo ne s'enclenche que quand le combat est prêt depuis quelques secondes, puis reste jusqu'à la fin.
+  const ARM_DELAY = 3000;
+  let readySince = 0, armed = false;
+  function battleReady() {
+    try {
+      const s = game && game.scene.getScene('battle');
+      return !!(s && s.sys.isActive() && s.controls);
+    } catch (e) { return false; }
+  }
+  function updateArm() {
+    if (!location.pathname.startsWith('/battle')) { readySince = 0; armed = false; return; }
+    if (armed) return;
+    if (!battleReady()) { readySince = 0; return; }
+    if (!readySince) readySince = Date.now();
+    if (Date.now() - readySince >= ARM_DELAY) armed = true;
+  }
+
   let wrapped = null;
   function turbo() {
     readLevel();
+    updateArm();
     if (!game || !game.loop || typeof game.loop.callback !== 'function') return;
     if (game.loop.callback === wrapped) return;
     const cb = game.loop.callback;
     wrapped = function (time, delta) {
-      return cb.call(this, time, level > 1 && location.pathname.startsWith('/battle') ? Math.min(delta * level, 100) : delta);
+      return cb.call(this, time, level > 1 && armed && location.pathname.startsWith('/battle') ? Math.min(delta * level, 100) : delta);
     };
     game.loop.callback = wrapped;
   }
