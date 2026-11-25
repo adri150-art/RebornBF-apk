@@ -258,6 +258,7 @@ try{
       h += item('opt:screen_on', '💡', 'Écran toujours allumé', 'Pas de mise en veille pendant le jeu', S.opt.screen_on !== false);
       h += item('opt:fullscreen', '📱', 'Plein écran', 'Cache les barres du téléphone', S.opt.fullscreen !== false);
       h += item('opt:format169', '🖼', 'Format du jeu', 'Garde les proportions du jeu, rien n\'est étiré', S.opt.format169 !== false);
+      h += item('opt:background', '🌙', 'Jouer en arrière-plan', 'Le jeu et les bots continuent quand tu quittes l\'appli', S.opt.background !== false);
     }
     h += '</div>';
     h += `<div class="actions">${ANDROID ? '' : '<button class="btn" data-a="fullscreen">⛶  Plein écran</button>'}<button class="btn gold" data-close>Fermer</button></div>`;

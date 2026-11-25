@@ -137,7 +137,13 @@ public class MainActivity extends Activity {
         root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
                 new int[]{0xFF0E1222, 0xFF07060C, 0xFF07060C, 0xFF16101E}));
 
-        web = new WebView(this);
+        // Le jeu se croit toujours affiché : en arrière-plan, Android ne coupe ni l'affichage ni les minuteries du jeu
+        web = new WebView(this) {
+            @Override
+            protected void onWindowVisibilityChanged(int visibility) {
+                super.onWindowVisibilityChanged(opt("background", true) ? View.VISIBLE : visibility);
+            }
+        };
         setupWeb(web);
         root.addView(web, new FrameLayout.LayoutParams(-1, -1, Gravity.TOP));
 
@@ -203,6 +209,19 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+        KeepAliveService.stop(this);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // On quitte l'appli : le jeu continue en arrière-plan (notification « Reborn BF continue de jouer »)
+        if (opt("background", true) && !isFinishing()) KeepAliveService.start(this);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
         web.onResume();
@@ -215,11 +234,12 @@ public class MainActivity extends Activity {
         super.onPause();
         CookieManager.getInstance().flush();
         // Avec l'anti-pause, on laisse le jeu tourner quand l'appli passe derrière.
-        if (!opt("antipause", true)) web.onPause();
+        if (!opt("antipause", true) && !opt("background", true)) web.onPause();
     }
 
     @Override
     protected void onDestroy() {
+        KeepAliveService.stop(this);
         if (popup != null) popup.dismiss();
         if (panel != null) panel.dismiss();
         if (quick != null) quick.dismiss();
@@ -530,7 +550,7 @@ public class MainActivity extends Activity {
           .append("window.GM_setValue=window.GM_setValue||function(k,v){try{localStorage.setItem('gm_'+k,JSON.stringify(v));}catch(e){}};")
           .append("window.GM_deleteValue=window.GM_deleteValue||function(k){try{localStorage.removeItem('gm_'+k);}catch(e){}};\n");
 
-        if (opt("antipause", true)) sb.append(wrap(asset("antipause.js"), true, "anti-pause"));
+        if (opt("antipause", true) || opt("background", true)) sb.append(wrap(asset("antipause.js"), true, "anti-pause"));
         if (opt("appfeel", true)) sb.append(wrap(asset("appfeel.js"), false, "style appli"));
         sb.append(wrap(asset("nav.js"), false, "menu rapide"));
         sb.append(wrap(asset("gamedata.js"), false, "données du jeu"));
@@ -568,8 +588,8 @@ public class MainActivity extends Activity {
     }
 
     private static final String[] OPTS = {"remaster", "infos", "appfeel", "haptic", "antipause", "screen_on", "fullscreen",
-            "format169", "hd", "always_x2", "always_auto", "notifications", "turbo15", "turbo2"};
-    private static final boolean[] OPT_DEF = {true, true, true, true, true, true, true, true, false, true, false, true, false, false};
+            "format169", "hd", "always_x2", "always_auto", "notifications", "turbo15", "turbo2", "background"};
+    private static final boolean[] OPT_DEF = {true, true, true, true, true, true, true, true, false, true, false, true, false, false, true};
 
     /** Réglages au format de l'interface (bots, options, scripts). */
     private JSONObject settingsJson() {
