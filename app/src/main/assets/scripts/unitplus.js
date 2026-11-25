@@ -14,34 +14,19 @@
   const css = document.createElement('style');
   css.id = 'rbf-unitplus';
   css.textContent = `
-    /* Profondeur : léger voile sombre sur les bords de l'écran */
-    [class*="unit-info-module__"][class*="__page"]{position:relative}
-    [class*="unit-info-module__"][class*="__page"]::before{content:"";position:absolute;inset:0;pointer-events:none;z-index:0;
-      background:radial-gradient(120% 80% at 50% 40%,transparent 55%,rgba(5,6,14,.55) 100%)}
-    [class*="unit-info-module__"][class*="__page"] > *{position:relative;z-index:1}
-
     /* Stats : pastilles en verre, chiffres bien alignés */
     [class*="unit-info-module__"][class*="__statRow"]{filter:drop-shadow(0 3px 6px rgba(0,0,0,.35))}
     [class*="unit-info-module__"][class*="__value"]{font-variant-numeric:tabular-nums;text-shadow:0 1px 0 rgba(0,0,0,.6),0 0 8px rgba(255,214,120,.18)}
-    [class*="unit-info-module__"][class*="__expFill"]{background:linear-gradient(90deg,#3fa8ff,#7be0ff)!important;box-shadow:0 0 10px rgba(90,190,255,.55)}
 
     /* Boutons du jeu : ombre douce et réaction au toucher */
     [class*="kit-module__"][class*="__button"],[class*="kit-module__"][class*="__labelButton"]{filter:drop-shadow(0 4px 8px rgba(0,0,0,.45));transition:transform .1s ease,filter .1s ease}
     [class*="kit-module__"][class*="__button"]:active,[class*="kit-module__"][class*="__labelButton"]:active{transform:scale(.95);filter:drop-shadow(0 2px 4px rgba(0,0,0,.5)) brightness(1.15)}
 
-    /* Compétences : panneaux en verre, texte complet au lieu du bandeau qui défile */
-    [class*="unit-info-module__"][class*="__skills"]{display:flex;flex-direction:column;gap:6px;padding:6px 8px;overflow-y:auto}
-    [class*="unit-info-module__"][class*="__skillRow"]{height:auto!important;min-height:0!important;text-align:left;border-radius:14px;overflow:hidden;
-      background:linear-gradient(180deg,rgba(18,22,40,.92),rgba(10,12,24,.92))!important;border:1px solid rgba(255,206,110,.28)!important;
-      box-shadow:0 6px 16px rgba(0,0,0,.4),inset 0 1px 0 rgba(255,255,255,.06)}
-    [class*="skill-row-module__"][class*="__viewport"]{overflow:visible!important;-webkit-mask-image:none!important;mask-image:none!important;height:auto!important}
-    [class*="skill-row-module__"][class*="__track"]{animation:none!important;transform:none!important;white-space:normal!important;width:auto!important;display:block!important}
-    [class*="skill-row-module__"][class*="__repeat"]{display:none!important}
-    [class*="unit-info-module__"][class*="__skillEffects"]{white-space:normal!important;height:auto!important;line-height:1.35;font-size:.92em;
-      padding:2px 12px 8px!important;color:#dfe4f2;display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+    /* Compétences : ombre douce */
+    [class*="unit-info-module__"][class*="__skillRow"]{border-radius:12px;box-shadow:0 4px 12px rgba(0,0,0,.35),inset 0 1px 0 rgba(255,255,255,.06)}
 
     /* Barre d'actions ajoutée par l'appli */
-    #rbf-unit-actions{position:absolute;left:31%;right:21%;bottom:8px;display:flex;gap:8px;z-index:5;
+    #rbf-unit-actions{position:fixed;display:flex;gap:8px;z-index:5;
       padding:6px;border-radius:18px;background:rgba(8,10,20,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
       border:1px solid rgba(255,214,120,.25);box-shadow:0 8px 20px rgba(0,0,0,.45)}
     #rbf-unit-actions button{flex:1;min-width:0;height:40px;border-radius:13px;font-size:13px!important;white-space:nowrap;border:1px solid rgba(255,214,120,.55);cursor:pointer;
@@ -140,11 +125,11 @@
 
   // ───────── Barre d'actions sur la fiche d'unité ─────────
   function addActions() {
-    if (location.pathname !== '/units/info') return;
-    if ($('#rbf-unit-actions')) return;
+    const old = $('#rbf-unit-actions');
+    if (location.pathname !== '/units/info') { if (old) old.remove(); return; }
+    if (old) { place(old); return; }
     const body = $('[class*="unit-info-module__"][class*="__body"]');
     if (!body) return;
-    if (getComputedStyle(body).position === 'static') body.style.position = 'relative';
     // Le bouton « Enhancements » du jeu ne fait rien : on le branche sur l'amélioration
     $$('[class*="unit-info-module__"][class*="__action"]').forEach((el) => {
       if (el.dataset.rbfHooked || !/enhanc|am[ée]lior/i.test(el.innerText || el.textContent || '')) return;
@@ -159,11 +144,25 @@
       const b = e.target.closest('button[data-k]');
       if (b) { e.preventDefault(); e.stopPropagation(); start(b.dataset.k); }
     });
-    body.appendChild(bar);
+    document.body.appendChild(bar);
+    place(bar);
   }
 
+  // Place la barre en bas de l'image de l'unité, sans rien changer à la mise en page du jeu
+  function place(bar) {
+    const body = $('[class*="unit-info-module__"][class*="__body"]');
+    if (!body) { bar.style.display = 'none'; return; }
+    const r = body.getBoundingClientRect();
+    if (r.width === 0) { bar.style.display = 'none'; return; }
+    bar.style.display = 'flex';
+    bar.style.left = Math.round(r.left + r.width * 0.31) + 'px';
+    bar.style.width = Math.round(r.width * 0.48) + 'px';
+    bar.style.top = Math.round(r.bottom - 60) + 'px';
+  }
+
+  window.addEventListener('resize', () => { const b = $('#rbf-unit-actions'); if (b) place(b); });
   setInterval(() => {
-    if (!location.pathname.startsWith('/units')) return;
+    if (!location.pathname.startsWith('/units')) { const b = $('#rbf-unit-actions'); if (b) b.remove(); return; }
     learnUnitMenu();
     addActions();
     followPick();
