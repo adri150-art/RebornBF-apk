@@ -5,6 +5,7 @@
 const { app, BrowserWindow, ipcMain, shell, Notification, Menu, nativeTheme, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { spawn } = require('child_process');
 
 const SITE = 'https://rebornbf.com';
 const HOME = SITE + '/home';
@@ -260,6 +261,33 @@ ipcMain.on('rbf:action', (e, a) => {
   else if (a === 'devtools') wc.toggleDevTools();
 });
 
+// ───────────── Ouverture dans Chrome ─────────────
+
+// Le jeu s'ouvre dans ton Chrome, en fenêtre d'appli (sans barre d'adresse), avec ton profil
+// habituel : ta connexion Google y est déjà. Si Chrome est introuvable, l'appli garde sa propre fenêtre.
+function findChrome() {
+  const bases = [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA].filter(Boolean);
+  for (const b of bases) {
+    const p = path.join(b, 'Google', 'Chrome', 'Application', 'chrome.exe');
+    if (fs.existsSync(p)) return p;
+  }
+  return null;
+}
+
+function openInChrome() {
+  if (process.argv.includes('--fenetre')) return false; // forcer la fenêtre intégrée
+  const chrome = findChrome();
+  if (!chrome) return false;
+  const w = settings.window;
+  try {
+    const child = spawn(chrome, ['--app=' + HOME, `--window-size=${w.width},${w.height}`], { detached: true, stdio: 'ignore' });
+    child.unref();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
 // ───────────── Démarrage ─────────────
 
 if (!app.requestSingleInstanceLock()) {
@@ -273,6 +301,7 @@ if (!app.requestSingleInstanceLock()) {
     nativeTheme.themeSource = 'dark';
     Menu.setApplicationMenu(null);
     settings = loadSettings();
+    if (openInChrome()) { app.quit(); return; }
     session.fromPartition(PARTITION).setUserAgent(chromeUserAgent());
     createWindow();
   });
