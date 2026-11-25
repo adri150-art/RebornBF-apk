@@ -341,6 +341,11 @@ try{
     N.save(S);
   }
 
+  // Sur téléphone, le bouton ☰ est dans la barre sous le jeu quand il y a la place
+  const syncBar = () => { fab.style.display = window.__rbfBar ? 'none' : ''; };
+  syncBar();
+  window.addEventListener('rbfbar', syncBar);
+  if (ANDROID && N.postMessage) N.postMessage('bar?');
   fab.addEventListener('click', quick);
   fab.addEventListener('contextmenu', (e) => { e.preventDefault(); settings(); });
 

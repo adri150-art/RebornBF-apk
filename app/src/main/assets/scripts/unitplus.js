@@ -276,10 +276,14 @@
     .art{position:absolute;inset:0;z-index:20;overflow:hidden;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;
       transition:opacity .22s ease-out;background:radial-gradient(circle at 50% 45%,var(--c1) 0%,var(--c2) 38%,var(--c3) 75%,#050304 100%)}
     .art.on{opacity:1;pointer-events:auto}
-    .art .rays{position:absolute;left:50%;top:45%;width:220vmax;height:220vmax;margin:-110vmax 0 0 -110vmax;opacity:.26;mix-blend-mode:screen;
-      background:repeating-conic-gradient(from 0deg,var(--ray) 0deg 7deg,transparent 7deg 18deg);animation:spin 40s linear infinite;
-      -webkit-mask:radial-gradient(circle,#000 0%,rgba(0,0,0,.7) 25%,transparent 60%);mask:radial-gradient(circle,#000 0%,rgba(0,0,0,.7) 25%,transparent 60%)}
-    @keyframes spin{to{transform:rotate(360deg)}}
+    /* Halos de lumière doux de la couleur de l'élément, qui dérivent lentement */
+    .art .light{position:absolute;border-radius:50%;filter:blur(40px);mix-blend-mode:screen;opacity:.55}
+    .art .l1{width:95%;aspect-ratio:1;left:-25%;top:-15%;background:radial-gradient(circle,var(--ray),transparent 70%);animation:drift1 14s ease-in-out infinite}
+    .art .l2{width:85%;aspect-ratio:1;right:-30%;top:25%;background:radial-gradient(circle,var(--glow),transparent 70%);animation:drift2 18s ease-in-out infinite}
+    .art .l3{width:110%;aspect-ratio:1;left:-5%;bottom:-45%;background:radial-gradient(circle,var(--c2),transparent 70%);opacity:.7;animation:drift1 22s ease-in-out infinite reverse}
+    @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(8%,6%) scale(1.12)}}
+    @keyframes drift2{0%,100%{transform:translate(0,0) scale(1.05)}50%{transform:translate(-10%,-8%) scale(.92)}}
+    .art .veil{position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,255,255,.08) 0%,transparent 35%,transparent 65%,rgba(0,0,0,.45) 100%)}
     .art .glow{position:absolute;left:50%;top:45%;width:90%;aspect-ratio:1;transform:translate(-50%,-50%);border-radius:50%;
       background:radial-gradient(circle,var(--glow) 0%,transparent 65%);filter:blur(10px);animation:pulse 3.2s ease-in-out infinite}
     @keyframes pulse{0%,100%{opacity:.75;transform:translate(-50%,-50%) scale(.95)}50%{opacity:1;transform:translate(-50%,-50%) scale(1.05)}}
@@ -316,10 +320,10 @@
     const c = ELEM[el] || ELEM.light;
     ['--c1', '--c2', '--c3', '--ray', '--glow'].forEach((k, i) => artEl.style.setProperty(k, c[i]));
     let sparks = '';
-    for (let i = 0; i < 18; i++) {
+    for (let i = 0; i < 10; i++) {
       sparks += `<i class="spark" style="left:${Math.round(Math.random() * 100)}%;bottom:${Math.round(Math.random() * 25) - 5}%;--d:${(4 + Math.random() * 4).toFixed(1)}s;--w:-${(Math.random() * 8).toFixed(1)}s"></i>`;
     }
-    artEl.innerHTML = `<div class="rays"></div><div class="glow"></div>${sparks}
+    artEl.innerHTML = `<i class="light l1"></i><i class="light l2"></i><i class="light l3"></i><div class="veil"></div><div class="glow"></div>${sparks}
       <img class="big" src="${esc(d.art)}" alt="" draggable="false">
       <div class="cap"><b class="ol">${esc(d.name)}</b><span class="ol">${d.element ? `<img src="${esc(d.element)}" alt="">` : ''}${esc(d.no)}${d.rarityImg ? `<img src="${esc(d.rarityImg)}" alt="">` : ''}</span></div>
       <div class="hint">Touche pour fermer</div>`;

@@ -108,6 +108,9 @@ public class MainActivity extends Activity {
     private FrameLayout root;
     private TextView fab;
     private boolean fabInBand;
+    private LinearLayout bar;
+    private TextView barCtx;
+    private boolean barOn;
     private int cutTop, cutBottom, cornerTop, cornerBottom;
     private ProgressBar progress;
     private View splash;
@@ -155,6 +158,10 @@ public class MainActivity extends Activity {
         fab = buildFab();
         root.addView(fab, new FrameLayout.LayoutParams(0, 0, Gravity.BOTTOM | Gravity.END));
         fab.setVisibility(View.GONE); // le menu ☰ est maintenant dans le jeu, au style du jeu
+        // Barre sous le jeu (dans la bande noire) : menu ☰ + bouton de la page (Infos quête, Taux, Boss…)
+        bar = buildBar();
+        root.addView(bar, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(42), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL));
+        bar.setVisibility(View.GONE);
         setContentView(root);
 
         // Encoche, coins arrondis : on mesure les zones à éviter puis on place le jeu
@@ -437,6 +444,11 @@ public class MainActivity extends Activity {
             }
         } else if (data.startsWith("notify:")) {
             notifyUser(data.substring(7));
+        } else if (data.startsWith("ctx:")) {
+            final String label = data.substring(4);
+            runOnUiThread(() -> { barCtx.setText(label); barCtx.setVisibility(label.isEmpty() ? View.GONE : View.VISIBLE); });
+        } else if (data.equals("bar?")) {
+            runOnUiThread(this::tellBar);
         } else if (data.startsWith("save:")) {
             final String json = data.substring(5);
             runOnUiThread(() -> saveFromPage(json));
@@ -543,6 +555,7 @@ public class MainActivity extends Activity {
             }
         }
         // Menu ☰ et réglages dans le style du jeu (même interface que sur PC), reliés à l'appli
+        sb.append("window.__rbfBar=" + prefs.getBoolean("bar_on", false) + ";");
         sb.append("window.rbfApp={platform:'android',settings:function(){return JSON.parse(")
           .append(JSONObject.quote(settingsJson().toString()))
           .append(")},save:function(s,u){try{rbfNative.postMessage('save:'+JSON.stringify({s:s,url:u||null}))}catch(e){}},")
@@ -734,8 +747,18 @@ public class MainActivity extends Activity {
             pl.topMargin = top;
             progress.setLayoutParams(pl);
         }
-        // Bouton ☰ : rangé dans la bande du bas s'il y a la place, sinon flottant
+        // Barre sous le jeu : seulement s'il y a la place dans la bande du bas, sinon les boutons restent dans la page
         int band = h - (top + webH);
+        boolean on = band >= dp(52);
+        FrameLayout.LayoutParams bl = (FrameLayout.LayoutParams) bar.getLayoutParams();
+        bl.bottomMargin = Math.max(safeBottom, (band - dp(42)) / 2);
+        bar.setLayoutParams(bl);
+        bar.setVisibility(on ? View.VISIBLE : View.GONE);
+        if (on != barOn) {
+            barOn = on;
+            prefs.edit().putBoolean("bar_on", on).apply();
+            tellBar();
+        }
         FrameLayout.LayoutParams fl = (FrameLayout.LayoutParams) fab.getLayoutParams();
         boolean inBand = band >= dp(50);
         if (inBand != fabInBand || fl.width == 0) {
@@ -806,6 +829,51 @@ public class MainActivity extends Activity {
     // ───────────────────────────── Bouton flottant ─────────────────────────────
 
     @SuppressLint("ClickableViewAccessibility")
+    /** Prévient la page : boutons dans la barre native (true) ou dans la page (false). */
+    private void tellBar() {
+        if (web == null) return;
+        web.evaluateJavascript("window.__rbfBar=" + barOn + ";try{window.dispatchEvent(new Event('rbfbar'))}catch(e){}", null);
+    }
+
+    private TextView barButton(String text) {
+        TextView b = new TextView(this);
+        b.setText(text);
+        b.setTextColor(C_GOLD);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
+        b.setTypeface(Typeface.DEFAULT_BOLD);
+        b.setGravity(Gravity.CENTER);
+        b.setPadding(dp(18), 0, dp(18), 0);
+        b.setShadowLayer(3, 0, 2, 0xFF1A1006);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setCornerRadius(dp(12));
+        bg.setColors(new int[]{0xFF2A2012, 0xFF120E08});
+        bg.setStroke(dp(1), 0xB3FFD278);
+        b.setBackground(bg);
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(LinearLayout.LayoutParams.WRAP_CONTENT, dp(42));
+        lp.setMargins(dp(5), 0, dp(5), 0);
+        b.setLayoutParams(lp);
+        return b;
+    }
+
+    private LinearLayout buildBar() {
+        LinearLayout l = new LinearLayout(this);
+        l.setOrientation(LinearLayout.HORIZONTAL);
+        l.setGravity(Gravity.CENTER);
+        TextView menu = barButton("☰  Menu");
+        menu.setOnClickListener(v -> { tap(); web.evaluateJavascript("window.__rbfUI&&window.__rbfUI.quick()", null); });
+        menu.setOnLongClickListener(v -> { web.evaluateJavascript("window.__rbfUI&&window.__rbfUI.settings()", null); return true; });
+        barCtx = barButton("");
+        barCtx.setVisibility(View.GONE);
+        barCtx.setOnClickListener(v -> { tap(); web.evaluateJavascript("window.__rbfInfo&&window.__rbfInfo.open()", null); });
+        l.addView(barCtx);
+        l.addView(menu);
+        return l;
+    }
+
+    private void tap() {
+        if (opt("haptic", true)) web.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY, HapticFeedbackConstants.FLAG_IGNORE_VIEW_SETTING);
+    }
+
     private TextView buildFab() {
         TextView b = new TextView(this);
         b.setText("☰");

@@ -76,9 +76,18 @@
   const popEl = root.querySelector('.pop');
   const mount = () => { if (!document.documentElement.contains(host)) document.documentElement.appendChild(host); };
 
-  let onOpen = null;
-  function showTab(label, fn) { mount(); tabEl.textContent = label; tabEl.classList.add('on'); onOpen = fn; }
-  function hideTab() { tabEl.classList.remove('on'); onOpen = null; }
+  let onOpen = null, tabLabel = '';
+  // Sur téléphone avec de la place sous le jeu, le bouton va dans la barre native au lieu de couvrir le jeu
+  const native = () => !!(window.__rbfBar && window.rbfApp && window.rbfApp.platform === 'android');
+  function syncTab() {
+    tabEl.textContent = tabLabel;
+    tabEl.classList.toggle('on', !!onOpen && !native());
+    if (window.rbfApp && window.rbfApp.platform === 'android' && window.rbfApp.postMessage) window.rbfApp.postMessage('ctx:' + (onOpen && native() ? tabLabel : ''));
+  }
+  function showTab(label, fn) { mount(); tabLabel = label; onOpen = fn; syncTab(); }
+  function hideTab() { onOpen = null; syncTab(); }
+  window.addEventListener('rbfbar', syncTab);
+  window.__rbfInfo = { open: () => { if (onOpen) onOpen(); } };
   function show(html) { mount(); popEl.innerHTML = html; popEl.classList.add('on'); }
   function close() { popEl.classList.remove('on'); }
   const actions = {};
