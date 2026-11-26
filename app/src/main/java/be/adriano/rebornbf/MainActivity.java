@@ -593,7 +593,7 @@ public class MainActivity extends Activity {
             sb.append(wrap(c, false, "combat"));
         }
         for (String[] b : BOTS) {
-            if (botOn(b[0])) sb.append(wrap(asset(b[3]), "1".equals(b[4]), b[1]));
+            if (botOn(b[0]) || "farm".equals(b[0])) sb.append(wrap(asset(b[3]), "1".equals(b[4]), b[1]));
         }
         JSONArray custom = customScripts();
         for (int i = 0; i < custom.length(); i++) {

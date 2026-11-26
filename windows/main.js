@@ -98,7 +98,7 @@ function buildInjection(s) {
     js += wrap(asset('combat.js').replace('__AUTO__', String(!!s.opt.always_auto)).replace('__X2__', String(!!s.opt.always_x2))
       .replace('__TURBO__', s.opt.turbo2 ? '2' : s.opt.turbo15 ? '1.5' : '1'), false, 'combat');
   }
-  for (const b of BOTS) if (s.bots[b.id]) js += wrap(asset(b.file), b.start, b.id);
+  for (const b of BOTS) if (s.bots[b.id] || b.id === 'farm') js += wrap(asset(b.file), b.start, b.id);
   for (const c of s.custom) {
     if (!c || c.on === false) continue;
     const code = String(c.code || '');

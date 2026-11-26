@@ -55,21 +55,24 @@
   const draw = () => {
     hud.classList.toggle('on', !!st.on);
     const n = st.fights + st.curRun;
-    const title = 'Farm · ' + (st.target ? n + ' / ' + st.target : n + ' combat' + (n > 1 ? 's' : ''));
-    const sub = status || (st.on ? 'touche pour arrêter' : '');
+    // Sur une quête, le badge sert aussi de bouton pour lancer le farm directement
+    const onQuest = /^\/start\/\d+/.test(location.pathname);
+    const idle = !st.on && Date.now() >= flashUntil;
+    const title = idle && onQuest ? '▶ Farmer cette quête' : 'Farm · ' + (st.target ? n + ' / ' + st.target : n + ' combat' + (n > 1 ? 's' : ''));
+    const sub = idle && onQuest ? 'touche pour choisir combien' : status || (st.on ? 'touche pour arrêter' : '');
     hud.querySelector('b').textContent = title;
     hud.querySelector('span').textContent = sub;
-    const visible = st.on || Date.now() < flashUntil;
+    const visible = st.on || Date.now() < flashUntil || onQuest;
     if (nativeTop()) {
       hud.classList.remove('show');
-      try { window.rbfNative.postMessage('fstat:' + (visible ? (st.on ? '⏹  ' : '') + title + (status ? ' · ' + status : '') : '')); } catch (e) { /* rien */ }
+      try { window.rbfNative.postMessage('fstat:' + (visible ? (st.on ? '⏹  ' : '') + title + (status && !(idle && onQuest) ? ' · ' + status : '') : '')); } catch (e) { /* rien */ }
     } else {
       hud.classList.toggle('show', visible);
     }
   };
   window.addEventListener('rbfbar', () => draw());
   // Arrêt depuis la barre de l'appli
-  window.__rbfFarm = { stop: () => { if (st.on) { st.on = false; status = 'arrêté'; flashUntil = Date.now() + 3000; save(st); draw(); setTimeout(draw, 3100); } } };
+  window.__rbfFarm = { stop: () => hud.click() }; // barre de l'appli : arrête le farm, ou le lance sur une quête
   hud.addEventListener('click', () => {
     // Lancement depuis une quête : on demande combien de combats faire
     const q = location.pathname.match(/^\/start\/(\d+)/);
@@ -97,7 +100,11 @@
     save(st); draw();
   });
   // Garde le badge même si le jeu redessine la page
-  setInterval(() => { if (!document.body.contains(hud)) document.body.appendChild(hud); }, 2000);
+  let lastPath = location.pathname;
+  setInterval(() => {
+    if (!document.body.contains(hud)) document.body.appendChild(hud);
+    if (location.pathname !== lastPath) { lastPath = location.pathname; draw(); }
+  }, 500);
   draw();
 
   const setStatus = (s) => {

@@ -17,7 +17,7 @@ PARTS = [
     ('gameinfo.js', 'gameinfo', 'S.opt.infos', False),
     ('hd.js', 'hd', 'S.opt.hd', False),
     ('combat.js', 'combat', 'true', False),
-    ('farm.js', 'farm', 'S.bots.farm', False),
+    ('farm.js', 'farm', 'true', False),
     ('aventure.js', 'aventure', 'S.bots.aventure', True),
 ]
 
