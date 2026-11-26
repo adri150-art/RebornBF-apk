@@ -77,13 +77,14 @@
       s.id = 'rbf-adv-style';
       s.textContent = `
         #rbf-adv{position:fixed;left:8px;bottom:8px;z-index:2147483600;display:flex;align-items:center;gap:7px;
-          height:28px;padding:0 12px 0 10px;border-radius:14px;background:rgba(10,11,15,.88);border:1px solid #262a36;
-          color:#d5d8e0;font:600 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;user-select:none;
+          height:30px;padding:0 12px 0 10px;border-radius:10px;background:rgba(14,11,7,.94);box-shadow:inset 0 0 0 1px rgba(255,210,120,.5),0 3px 8px rgba(0,0,0,.5);
+          color:#ffd24a;font:600 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;user-select:none;
           -webkit-tap-highlight-color:transparent;max-width:min(460px,calc(100vw - 16px))}
         #rbf-adv i{flex:none;width:8px;height:8px;border-radius:50%;background:#5c6070}
         #rbf-adv.on i{background:#4fc27a;box-shadow:0 0 0 3px rgba(79,194,122,.18)}
         #rbf-adv.warn i{background:#e0a83c;box-shadow:0 0 0 3px rgba(224,168,60,.18)}
-        #rbf-adv span{color:#8a8fa0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`;
+        #rbf-adv.native{display:none}
+        #rbf-adv span{color:#a99f88;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`;
       document.head.appendChild(s);
     }
     pill = document.createElement('div');
@@ -102,8 +103,17 @@
     pill.classList.toggle('on', st.on && !warn);
     pill.classList.toggle('warn', st.on && warn);
     pill.querySelector('b').textContent = st.on ? 'Aventure' : 'Aventure en pause';
-    pill.querySelector('span').textContent = [runs ? `${runs} mission${runs > 1 ? 's' : ''}` : '', st.status].filter(Boolean).join(' · ');
+    const sub = [runs ? `${runs} mission${runs > 1 ? 's' : ''}` : '', st.status].filter(Boolean).join(' · ');
+    pill.querySelector('span').textContent = sub;
+    // Sur téléphone : affiché dans la bande au-dessus du jeu (barre de l'appli), pas sur le jeu
+    const nat = !!(window.__rbfTop && window.rbfNative && window.rbfNative.postMessage);
+    pill.classList.toggle('native', nat);
+    if (nat) {
+      try { window.rbfNative.postMessage('astat:' + (st.on ? '⏹  Aventure' : '▶  Aventure en pause') + (sub ? ' · ' + sub : '')); } catch (e) { /* rien */ }
+    }
   }
+  window.__rbfAdv = { stop: () => setOn(!st.on) };
+  window.addEventListener('rbfbar', () => render());
 
   function setOn(v, why = '') {
     st.on = v;

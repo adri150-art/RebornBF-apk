@@ -68,6 +68,14 @@ public class KeepAliveService extends Service {
         super.onDestroy();
     }
 
+    /** L'appli est fermée depuis les applis récentes : tout s'arrête, notification comprise. */
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        stopForeground(true);
+        stopSelf();
+        super.onTaskRemoved(rootIntent);
+    }
+
     @Override
     public IBinder onBind(Intent intent) { return null; }
 }

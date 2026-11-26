@@ -33,25 +33,43 @@
   // ---------- Badge ----------
   const css = document.createElement('style');
   css.textContent = `
-    #rbf-farm{position:fixed;top:8px;right:8px;z-index:2147483600;display:flex;align-items:center;gap:7px;
-      height:28px;padding:0 12px 0 10px;border-radius:14px;background:rgba(10,11,15,.88);border:1px solid #262a36;
-      color:#d5d8e0;font:600 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;user-select:none;
+    #rbf-farm{position:fixed;top:8px;right:8px;z-index:2147483600;display:none;align-items:center;gap:7px;
+      height:30px;padding:0 12px 0 10px;border-radius:10px;background:rgba(14,11,7,.94);box-shadow:inset 0 0 0 1px rgba(255,210,120,.5),0 3px 8px rgba(0,0,0,.5);
+      color:#f1ead8;font:600 12px/1 system-ui,-apple-system,"Segoe UI",sans-serif;cursor:pointer;user-select:none;
       -webkit-tap-highlight-color:transparent;max-width:calc(100vw - 16px)}
+    #rbf-farm.show{display:flex}
+    #rbf-farm b{color:#ffd24a}
     #rbf-farm i{flex:none;width:8px;height:8px;border-radius:50%;background:#e05a5a}
     #rbf-farm.on i{background:#4fc27a;box-shadow:0 0 0 3px rgba(79,194,122,.18)}
-    #rbf-farm span{color:#8a8fa0;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`;
+    #rbf-farm span{color:#a99f88;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}`;
   document.head.appendChild(css);
   const hud = document.createElement('div');
   hud.id = 'rbf-farm';
   hud.innerHTML = '<i></i><b></b><span></span>';
   document.body.appendChild(hud);
   let status = '';
+  // Le badge n'existe que pendant un farm (plus un court message quand il s'arrête).
+  // Sur téléphone, il va dans la bande au-dessus du jeu (barre de l'appli) au lieu de couvrir le jeu.
+  let flashUntil = 0;
+  const nativeTop = () => !!(window.__rbfTop && window.rbfNative && window.rbfNative.postMessage);
   const draw = () => {
     hud.classList.toggle('on', !!st.on);
     const n = st.fights + st.curRun;
-    hud.querySelector('b').textContent = 'Farm · ' + (st.target ? n + ' / ' + st.target : n + ' combat' + (n > 1 ? 's' : ''));
-    hud.querySelector('span').textContent = status || (st.on ? 'actif' : 'touche pour lancer');
+    const title = 'Farm · ' + (st.target ? n + ' / ' + st.target : n + ' combat' + (n > 1 ? 's' : ''));
+    const sub = status || (st.on ? 'touche pour arrêter' : '');
+    hud.querySelector('b').textContent = title;
+    hud.querySelector('span').textContent = sub;
+    const visible = st.on || Date.now() < flashUntil;
+    if (nativeTop()) {
+      hud.classList.remove('show');
+      try { window.rbfNative.postMessage('fstat:' + (visible ? (st.on ? '⏹  ' : '') + title + (status ? ' · ' + status : '') : '')); } catch (e) { /* rien */ }
+    } else {
+      hud.classList.toggle('show', visible);
+    }
   };
+  window.addEventListener('rbfbar', () => draw());
+  // Arrêt depuis la barre de l'appli
+  window.__rbfFarm = { stop: () => { if (st.on) { st.on = false; status = 'arrêté'; flashUntil = Date.now() + 3000; save(st); draw(); setTimeout(draw, 3100); } } };
   hud.addEventListener('click', () => {
     // Lancement depuis une quête : on demande combien de combats faire
     const q = location.pathname.match(/^\/start\/(\d+)/);
@@ -72,7 +90,9 @@
         status = '';
       }
     } else {
-      status = '';
+      status = 'arrêté';
+      flashUntil = Date.now() + 3000;
+      setTimeout(draw, 3100);
     }
     save(st); draw();
   });
@@ -80,7 +100,11 @@
   setInterval(() => { if (!document.body.contains(hud)) document.body.appendChild(hud); }, 2000);
   draw();
 
-  const setStatus = (s) => { status = s; draw(); };
+  const setStatus = (s) => {
+    status = s;
+    if (!st.on) { flashUntil = Date.now() + 5000; setTimeout(draw, 5100); } // message de fin, puis le badge disparaît
+    draw();
+  };
   const notify = (t) => { try { if (window.rbfNative) window.rbfNative.postMessage('notify:' + t); } catch (e) { /* rien */ } };
   const goQuest = () => { if (st.quest) location.href = '/start/' + st.quest; };
   const alertText = () => ($$('[role="alert"]').map((a) => a.textContent).join(' ') || '').trim();

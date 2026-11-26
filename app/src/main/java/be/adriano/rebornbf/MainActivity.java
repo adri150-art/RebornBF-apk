@@ -111,6 +111,9 @@ public class MainActivity extends Activity {
     private LinearLayout bar;
     private TextView barCtx;
     private boolean barOn;
+    private LinearLayout topBar;
+    private TextView topFarm, topAdv;
+    private boolean topOn;
     private int cutTop, cutBottom, cornerTop, cornerBottom;
     private ProgressBar progress;
     private View splash;
@@ -168,6 +171,21 @@ public class MainActivity extends Activity {
         bar = buildBar();
         root.addView(bar, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(42), Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL));
         bar.setVisibility(View.GONE);
+        // Bande au-dessus du jeu : état des bots en cours (farm, aventure), touche pour les arrêter
+        topBar = new LinearLayout(this);
+        topBar.setOrientation(LinearLayout.HORIZONTAL);
+        topBar.setGravity(Gravity.CENTER);
+        topFarm = barButton("");
+        topFarm.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        topFarm.setVisibility(View.GONE);
+        topFarm.setOnClickListener(v -> { tap(); web.evaluateJavascript("window.__rbfFarm&&window.__rbfFarm.stop()", null); });
+        topAdv = barButton("");
+        topAdv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13);
+        topAdv.setVisibility(View.GONE);
+        topAdv.setOnClickListener(v -> { tap(); web.evaluateJavascript("window.__rbfAdv&&window.__rbfAdv.stop()", null); });
+        topBar.addView(topFarm);
+        topBar.addView(topAdv);
+        root.addView(topBar, new FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, dp(38), Gravity.TOP | Gravity.CENTER_HORIZONTAL));
         setContentView(root);
 
         // Encoche, coins arrondis : on mesure les zones à éviter puis on place le jeu
@@ -467,6 +485,14 @@ public class MainActivity extends Activity {
         } else if (data.startsWith("ctx:")) {
             final String label = data.substring(4);
             runOnUiThread(() -> { barCtx.setText(label); barCtx.setVisibility(label.isEmpty() ? View.GONE : View.VISIBLE); });
+        } else if (data.startsWith("fstat:") || data.startsWith("astat:")) {
+            final boolean farm = data.startsWith("f");
+            final String label = data.substring(6);
+            runOnUiThread(() -> {
+                TextView t = farm ? topFarm : topAdv;
+                t.setText(label);
+                t.setVisibility(label.isEmpty() ? View.GONE : View.VISIBLE);
+            });
         } else if (data.equals("bar?")) {
             runOnUiThread(this::tellBar);
         } else if (data.startsWith("save:")) {
@@ -543,6 +569,9 @@ public class MainActivity extends Activity {
         sb.append("(function(){if(window.top!==window)return;")
           .append("if(!/(^|\\.)rebornbf\\.com$/.test(location.hostname))return;")
           .append("if(window.__rbfApp)return;window.__rbfApp=1;\n");
+        sb.append("window.__rbfBar=" + prefs.getBoolean("bar_on", false) + ";window.__rbfTop=" + prefs.getBoolean("top_on", false) + ";");
+        // Nouvelle page : on efface l'état des bots affiché au-dessus du jeu, les bots actifs le renverront
+        sb.append("try{rbfNative.postMessage('fstat:');rbfNative.postMessage('astat:')}catch(e){}\n");
         // Petites compatibilités Tampermonkey pour les scripts ajoutés à la main
         sb.append("window.unsafeWindow=window;")
           .append("window.GM_addStyle=window.GM_addStyle||function(c){var s=document.createElement('style');s.textContent=c;(document.head||document.documentElement).appendChild(s);return s;};")
@@ -576,7 +605,6 @@ public class MainActivity extends Activity {
             }
         }
         // Menu ☰ et réglages dans le style du jeu (même interface que sur PC), reliés à l'appli
-        sb.append("window.__rbfBar=" + prefs.getBoolean("bar_on", false) + ";");
         sb.append("window.rbfApp={platform:'android',settings:function(){return JSON.parse(")
           .append(JSONObject.quote(settingsJson().toString()))
           .append(")},save:function(s,u){try{rbfNative.postMessage('save:'+JSON.stringify({s:s,url:u||null}))}catch(e){}},")
@@ -780,6 +808,18 @@ public class MainActivity extends Activity {
             prefs.edit().putBoolean("bar_on", on).apply();
             tellBar();
         }
+        // Bande du haut : état des bots, en dehors de l'écran du jeu
+        int topBand = top - safeTop;
+        boolean tOn = topBand >= dp(46);
+        FrameLayout.LayoutParams tl = (FrameLayout.LayoutParams) topBar.getLayoutParams();
+        tl.topMargin = safeTop + Math.max(0, (topBand - dp(38)) / 2);
+        topBar.setLayoutParams(tl);
+        topBar.setVisibility(tOn ? View.VISIBLE : View.GONE);
+        if (tOn != topOn) {
+            topOn = tOn;
+            prefs.edit().putBoolean("top_on", tOn).apply();
+            tellBar();
+        }
         FrameLayout.LayoutParams fl = (FrameLayout.LayoutParams) fab.getLayoutParams();
         boolean inBand = band >= dp(50);
         if (inBand != fabInBand || fl.width == 0) {
@@ -853,7 +893,7 @@ public class MainActivity extends Activity {
     /** Prévient la page : boutons dans la barre native (true) ou dans la page (false). */
     private void tellBar() {
         if (web == null) return;
-        web.evaluateJavascript("window.__rbfBar=" + barOn + ";try{window.dispatchEvent(new Event('rbfbar'))}catch(e){}", null);
+        web.evaluateJavascript("window.__rbfBar=" + barOn + ";window.__rbfTop=" + topOn + ";try{window.dispatchEvent(new Event('rbfbar'))}catch(e){}", null);
     }
 
     private TextView barButton(String text) {
