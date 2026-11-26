@@ -30,7 +30,7 @@ try{
   // que notre accélérateur est toujours branché, et on le rebranche sinon.
   // Niveau choisi en direct depuis le menu ☰ (sans recharger), sinon celui des réglages
   let level = TURBO;
-  const readLevel = () => { const v = parseFloat(localStorage.getItem('rbf_turbo')); level = v > 0 ? v : TURBO; };
+  const readLevel = () => { const v = parseFloat(localStorage.getItem('rbf_turbo')); level = Math.min(2, v > 0 ? v : TURBO); };
   // Le combat doit démarrer à vitesse normale (le chargement accéléré fait planter le niveau) :
   // le Turbo ne s'enclenche que quand le combat est prêt depuis quelques secondes, puis reste jusqu'à la fin.
   const ARM_DELAY = 3000;

@@ -21,6 +21,16 @@ try{
   const switchBtn = () => $$(U('right') + ' button').find((b) => /switch|changer/i.test(txt(b) + ' ' + (b.getAttribute('aria-label') || '')));
 
   // ───────── Lecture de la fiche du jeu ─────────
+  // Illustration de l'unité : l'ancienne (splashOriginal) ou toute nouvelle image du héros, la plus grande gagne
+  function bestArt() {
+    const cands = [$(U('splashOriginal')), ...$$(U('hero') + ' img'), ...$$('[class*="unit-info-module__"][class*="__splash"]')]
+      .map((e) => (e && e.tagName === 'IMG' ? e : e && e.querySelector && e.querySelector('img'))).filter(Boolean)
+      .filter((i) => !/attribute_mark|rarity|sphere|item\/|status_|button|header|frame|label/.test(i.currentSrc || i.src));
+    let best = null, area = 0;
+    cands.forEach((i) => { const a = (i.naturalWidth || i.width || 1) * (i.naturalHeight || i.height || 1); if (a > area) { area = a; best = i; } });
+    return best ? best.currentSrc || best.src : '';
+  }
+
   function read() {
     const page = $(U('page'));
     if (!page) return null;
@@ -36,7 +46,7 @@ try{
       stars: names[0] ? txt($(U('titleRow'))).replace(txt(names[0]), '').trim() : '',
       omni: !!$(U('titleRow') + ' [class*="__omni"]') || /omni/i.test(rarity ? rarity.getAttribute('aria-label') || '' : ''),
       element: imgOf($(U('subRow'))),
-      art: imgOf($(U('splashOriginal'))),
+      art: bestArt(),
       fav: !!$(U('favoriteMark')),
       type: '', typeIcon: '', lv: '', next: '', exp: 0, stats: [], spheres: [], cost: '', sp: '', skills: [],
       helper: helper ? helper.getAttribute('aria-pressed') === 'true' : false,
@@ -522,8 +532,7 @@ try{
     schedule();
     try {
       const I = await window.rbfData.index();
-      const aid = ((d.art || '').match(/\/units\/(\d+)\//) || [])[1];
-      const f = (aid && I.formByArchive[aid]) || I.formByName[(d.name || '').toLowerCase()];
+      const f = (await window.rbfData.formFromImage(d.art)) || I.formByName[(d.name || '').toLowerCase()];
       const ev = f && f.evolution;
       if (!ev) { custom = shell('<p>Pas de données d\'évolution pour cette unité.</p>'); schedule(); return; }
       const next = I.unit[f.unit] && I.unit[f.unit].forms[f.step + 1];

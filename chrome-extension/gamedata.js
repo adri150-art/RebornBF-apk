@@ -305,6 +305,29 @@ try{
     return best || (cands.length === 1 ? cands[0] : null);
   }
 
+  // Image d'unité affichée par le jeu → forme de l'API (anciennes images numérotées ou nouvelles cartes .webp)
+  let artIdx = null;
+  async function formFromImage(src) {
+    const I = await index();
+    const s = String(src || '');
+    const num = s.match(/\/units\/(\d+)\//) || s.match(/unit_ills_\w+?_(\d+)\./);
+    if (num && I.formByArchive[num[1]]) return I.formByArchive[num[1]];
+    if (!artIdx) {
+      const art = await get('art');
+      artIdx = {};
+      (art.units || []).forEach((u) => {
+        const p = u.thumbnail && u.thumbnail.path;
+        if (p) artIdx[p.split('/').pop().replace(/\.\w+$/, '').toLowerCase()] = u.form;
+      });
+    }
+    const file = s.split('?')[0].split('/').pop().replace(/\.\w+$/, '').toLowerCase();
+    if (artIdx[file]) return I.form[artIdx[file]] || null;
+    // Nouvelles cartes : <unité>-<forme>.webp, quel que soit le dossier (thumb, full, art…)
+    const m = file.match(/^([a-z0-9-]+?)-(\d+star|omni|\d)$/);
+    if (m) { const k = Object.keys(artIdx).find((x) => x === file || x.endsWith(file)); if (k) return I.form[artIdx[k]] || null; }
+    return null;
+  }
+
   // Objet affiché par le jeu (icône) → identifiant de l'API
   async function itemFromIcon(src) {
     const art = await get('art');
@@ -316,7 +339,7 @@ try{
     return null;
   }
 
-  window.rbfData = { get, index, missions, enemies, whereToGet, missionInfo, nameOf, farm, nice, effectsText, findSphere, waveEnemies, itemFromIcon };
+  window.rbfData = { get, index, missions, enemies, whereToGet, missionInfo, nameOf, farm, nice, effectsText, findSphere, waveEnemies, itemFromIcon, formFromImage };
 })();
 
 }catch(e){console.error("[RBF] gamedata",e)}

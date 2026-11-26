@@ -147,7 +147,7 @@
 
   // ───────── Menu rapide ─────────
   // Niveaux de Turbo des combats (enregistrés tout de suite, même en plein combat)
-  const TURBOS = [[1, '🐢 Normal'], [1.5, 'x1,5'], [2, 'x2'], [3, 'x3'], [4, 'x4'], [8, '⚡ x8']];
+  const TURBOS = [[1, '🐢 Normal'], [1.5, '🚀 x1,5'], [2, '⚡ x2']];
   function turboChips(tl) {
     return `<div class="chips tgrid" style="margin-bottom:8px">${TURBOS.map(([v, l]) => `<div class="chip${tl === v ? ' on' : ''}" data-t="${v}">${l}</div>`).join('')}</div>`;
   }

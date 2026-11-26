@@ -146,8 +146,8 @@
     try { old = JSON.parse(localStorage.getItem(ROSTER) || '{}'); } catch (e) { old = {}; }
     const list = old.list || {};
     links.forEach((a) => {
-      const img = a.querySelector('img[src*="/units/"]');
-      const aid = img && ((img.currentSrc || img.src).match(/\/units\/(\d+)\//) || [])[1];
+      const img = a.querySelector('img[src*="/units/"], img[src*="/cards/"], img[src*="unit"]');
+      const aid = img && (img.currentSrc || img.src);
       const uid = (a.getAttribute('href').match(/id=([0-9a-f-]{36})/) || [])[1];
       if (aid && uid) list[uid] = aid;
     });
@@ -159,16 +159,18 @@
     try { roster = (JSON.parse(localStorage.getItem(ROSTER) || '{}').list) || {}; } catch (e) { roster = {}; }
     const uids = Object.keys(roster);
     if (!uids.length) return `<p class="muted" style="margin-top:6px">Ouvre une fois l'écran « Unités » du jeu pour que je connaisse tes unités et te conseille une équipe.</p>`;
-    const I = await window.rbfData.index();
+    // Anciennes listes : seulement le numéro de l'unité → on refait l'adresse de l'image
+    const srcOf = (v) => (/^\d+$/.test(v) ? `${A}units/${v}/unit_ills_thum_${v}.png` : v);
+    const forms = await Promise.all(uids.map((uid) => window.rbfData.formFromImage(srcOf(roster[uid])).catch(() => null)));
     const seen = new Set();
-    const picks = uids.map((uid) => ({ uid, f: I.formByArchive[roster[uid]] }))
+    const picks = uids.map((uid, k) => ({ uid, f: forms[k], src: srcOf(roster[uid]) }))
       .filter((x) => x.f && els.includes(x.f.element) && !/totem|idol|pot|mimic|nymph|spirit|crystal|bulb|egg/i.test(x.f.name))
       .sort((a, b) => ((b.f.stats && b.f.stats.max && b.f.stats.max.atk) || 0) - ((a.f.stats && a.f.stats.max && a.f.stats.max.atk) || 0))
       .filter((x) => { if (seen.has(x.f.id)) return false; seen.add(x.f.id); return true; })
       .slice(0, 6);
     if (!picks.length) return `<p class="muted" style="margin-top:6px">Aucune de tes unités connues n'a cet élément.</p>`;
     return `<h3>Tes unités conseillées</h3><div class="team">${picks.map((x) => `<a href="/units/info?id=${x.uid}" title="${esc(x.f.name)}">
-      <img src="${A}units/${roster[x.uid]}/unit_ills_thum_${roster[x.uid]}.png" alt=""><span>${esc(x.f.name)}</span></a>`).join('')}</div>`;
+      <img src="${esc(x.src)}" alt=""><span>${esc(x.f.name)}</span></a>`).join('')}</div>`;
   }
 
   // ───────── 5. Fiche du boss pendant le combat ─────────
@@ -299,9 +301,10 @@
       const [I, art] = await Promise.all([window.rbfData.index(), window.rbfData.get('art')]);
       // Sans lire l'écran : l'unité affichée (son image) suffit, l'API donne la liste des matériaux
       if (!mats.length) {
-        const ids = [...new Set($$('img[src*="/units/"]').map((i) => ((i.currentSrc || i.src).match(/\/units\/(\d+)\//) || [])[1]).filter(Boolean))];
-        const forms = ids.map((x) => I.formByArchive[x]).filter((f) => f && f.evolution);
-        const score = (f) => (f.evolution.units || []).filter((u) => ids.some((x) => I.formByArchive[x] && I.formByArchive[x].unit === u.unit)).length;
+        const srcs = [...new Set($$('img[src*="/units/"], img[src*="/cards/"]').map((i) => i.currentSrc || i.src))];
+        const onPage = (await Promise.all(srcs.map((x) => window.rbfData.formFromImage(x).catch(() => null)))).filter(Boolean);
+        const forms = onPage.filter((f) => f.evolution);
+        const score = (f) => (f.evolution.units || []).filter((u) => onPage.some((x) => x.unit === u.unit)).length;
         forms.sort((a, b) => score(b) - score(a));
         const f = forms[0];
         if (f) {
@@ -313,8 +316,7 @@
       }
       rows = await Promise.all(mats.map(async (m) => {
         let id = m.id || null;
-        const u = !id && m.src.match(/\/units\/(\d+)\//);
-        if (u && I.formByArchive[u[1]]) id = I.formByArchive[u[1]].id;
+        if (!id && /\/units\/|\/cards\//.test(m.src)) { const f = await window.rbfData.formFromImage(m.src).catch(() => null); if (f) id = f.id; }
         if (!id) {
           const file = m.src.split('/').pop();
           const it = (art.items || []).find((x) => x.icon && x.icon.path.split('/').pop() === file);
