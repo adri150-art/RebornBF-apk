@@ -230,11 +230,14 @@ public class MainActivity extends Activity {
     protected void onStart() {
         super.onStart();
         KeepAliveService.stop(this);
+        if (web != null) web.evaluateJavascript("window.__rbfMute&&window.__rbfMute(false)", null);
     }
 
     @Override
     protected void onStop() {
         super.onStop();
+        // Appli quittée : plus de musique (le jeu et les bots peuvent continuer sans le son)
+        if (web != null) web.evaluateJavascript("window.__rbfMute&&window.__rbfMute(true)", null);
         // On quitte l'appli : le jeu continue en arrière-plan (notification « Reborn BF continue de jouer »)
         if (opt("background", true) && !isFinishing()) KeepAliveService.start(this);
     }
@@ -579,6 +582,7 @@ public class MainActivity extends Activity {
           .append("window.GM_setValue=window.GM_setValue||function(k,v){try{localStorage.setItem('gm_'+k,JSON.stringify(v));}catch(e){}};")
           .append("window.GM_deleteValue=window.GM_deleteValue||function(k){try{localStorage.removeItem('gm_'+k);}catch(e){}};\n");
 
+        sb.append(wrap(asset("audiopause.js"), true, "son"));
         if (opt("antipause", true) || opt("background", true)) sb.append(wrap(asset("antipause.js"), true, "anti-pause"));
         if (opt("appfeel", true)) sb.append(wrap(asset("appfeel.js"), false, "style appli"));
         sb.append(wrap(asset("nav.js"), false, "menu rapide"));

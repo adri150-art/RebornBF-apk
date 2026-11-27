@@ -26,6 +26,11 @@ import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
+import androidx.webkit.WebViewCompat;
+import androidx.webkit.WebViewFeature;
+
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.Locale;
 
 /**
@@ -34,6 +39,9 @@ import java.util.Locale;
  */
 public class PlayActivity extends Activity {
     private static final String HOME = "https://rebornbf.com/";
+    /** Seul petit ajout : couper le son du jeu quand on quitte l'appli (et le remettre au retour). */
+    private static final String AUDIO_PAUSE = "// Coupe le son du jeu quand on quitte l'appli, et le remet au retour.\n// On garde une trace des \u00ab moteurs audio \u00bb cr\u00e9\u00e9s par le jeu pour pouvoir les mettre en pause.\n(function () {\n  'use strict';\n  if (window.__rbfMute) return;\n  const ctxs = new Set();\n  ['AudioContext', 'webkitAudioContext'].forEach((k) => {\n    const C = window[k];\n    if (!C) return;\n    const W = function (...a) { const c = new C(...a); ctxs.add(c); return c; };\n    W.prototype = C.prototype;\n    Object.setPrototypeOf(W, C);\n    window[k] = W;\n  });\n  let muted = false;\n  window.__rbfMute = function (off) {\n    muted = !!off;\n    ctxs.forEach((c) => { try { if (off) c.suspend(); else c.resume(); } catch (e) { /* rien */ } });\n    document.querySelectorAll('audio,video').forEach((m) => {\n      if (off) { if (!m.paused) { m.__rbfWas = true; m.pause(); } }\n      else if (m.__rbfWas) { m.__rbfWas = false; m.play().catch(() => {}); }\n    });\n  };\n  // Un son lanc\u00e9 pendant que l'appli est cach\u00e9e reste coup\u00e9\n  document.addEventListener('play', (e) => { if (muted && e.target.pause) { e.target.__rbfWas = true; e.target.pause(); } }, true);\n})();\n";
+    private boolean docStart;
 
     private FrameLayout root;
     private WebView web;
@@ -54,6 +62,11 @@ public class PlayActivity extends Activity {
 
         web = new WebView(this);
         setupWeb(web);
+        docStart = WebViewFeature.isFeatureSupported(WebViewFeature.DOCUMENT_START_SCRIPT);
+        if (docStart) {
+            WebViewCompat.addDocumentStartJavaScript(web, AUDIO_PAUSE,
+                    new HashSet<>(java.util.Arrays.asList("https://rebornbf.com", "https://*.rebornbf.com")));
+        }
         root.addView(web, new FrameLayout.LayoutParams(-1, -1, Gravity.TOP));
 
         progress = new ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal);
@@ -178,7 +191,10 @@ public class PlayActivity extends Activity {
 
         @Override
         public void onPageFinished(WebView view, String url) {
-            if (!isPopup) return;
+            if (!isPopup) {
+                if (!docStart) view.evaluateJavascript(AUDIO_PAUSE, null);
+                return;
+            }
             Uri u = url == null ? null : Uri.parse(url);
             String p = u == null || u.getPath() == null ? "" : u.getPath();
             // La fenêtre de connexion revient sur le jeu : connexion faite
@@ -269,6 +285,23 @@ public class PlayActivity extends Activity {
     protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out);
         web.saveState(out);
+    }
+
+    /** Appli quittée : le jeu s'arrête (son coupé, plus rien ne tourne). Il reprend au retour. */
+    @Override
+    protected void onStop() {
+        web.evaluateJavascript("window.__rbfMute&&window.__rbfMute(true)", null);
+        web.onPause();
+        web.pauseTimers();
+        super.onStop();
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+        web.resumeTimers();
+        web.onResume();
+        web.evaluateJavascript("window.__rbfMute&&window.__rbfMute(false)", null);
     }
 
     @Override
