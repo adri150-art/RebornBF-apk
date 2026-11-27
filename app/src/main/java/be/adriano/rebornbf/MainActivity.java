@@ -582,6 +582,7 @@ public class MainActivity extends Activity {
           .append("window.GM_setValue=window.GM_setValue||function(k,v){try{localStorage.setItem('gm_'+k,JSON.stringify(v));}catch(e){}};")
           .append("window.GM_deleteValue=window.GM_deleteValue||function(k){try{localStorage.removeItem('gm_'+k);}catch(e){}};\n");
 
+        sb.append(wrap(asset("perf.js"), true, "performance"));
         sb.append(wrap(asset("audiopause.js"), true, "son"));
         if (opt("antipause", true) || opt("background", true)) sb.append(wrap(asset("antipause.js"), true, "anti-pause"));
         if (opt("appfeel", true)) sb.append(wrap(asset("appfeel.js"), false, "style appli"));

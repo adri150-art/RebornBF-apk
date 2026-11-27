@@ -14,6 +14,7 @@
       ],
       "js": [
         "native.js",
+        "perf.js",
         "antipause.js",
         "appfeel.js",
         "nav.js",

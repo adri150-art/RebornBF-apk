@@ -83,15 +83,6 @@ try{
     wrapped = function (time, delta) {
       const battle = inBattle();
       const dd = level > 1 && armed && battle ? Math.min(delta, 50) * level : delta;
-      if (fluide && battle && typeof g.headlessStep === 'function') {
-        // Cadence réelle des images : si elle tombe sous ~38 images/s, on allège pendant 2,5 s
-        const d = time - lastT;
-        lastT = time;
-        if (d > 0 && d < 500) avg = avg * 0.9 + d * 0.1;
-        const now = performance.now();
-        if (avg > 26) heavyUntil = now + 2500;
-        if (now < heavyUntil && (++frame & 1)) return g.headlessStep(time, dd); // calcule sans dessiner
-      }
       return cb.call(this, time, dd);
     };
     game.loop.callback = wrapped;

@@ -9,6 +9,7 @@ OUT = os.path.join(ROOT, 'chrome-extension')
 
 # (fichier source, nom dans l'extension, condition d'activation, lancé dès le début)
 PARTS = [
+    ('perf.js', 'perf', 'true', True),
     ('antipause.js', 'antipause', 'S.opt.antipause', True),
     ('appfeel.js', 'appfeel', 'S.opt.appfeel', False),
     ('nav.js', 'nav', 'true', False),

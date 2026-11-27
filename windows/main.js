@@ -87,6 +87,7 @@ function buildInjection(s) {
     + "window.GM_setValue=window.GM_setValue||function(k,v){try{localStorage.setItem('gm_'+k,JSON.stringify(v));}catch(e){}};"
     + "window.GM_deleteValue=window.GM_deleteValue||function(k){try{localStorage.removeItem('gm_'+k);}catch(e){}};\n";
 
+  js += wrap(asset('perf.js'), true, 'performance');
   if (s.opt.antipause) js += wrap(asset('antipause.js'), true, 'anti-pause');
   if (s.opt.appfeel) js += wrap(asset('appfeel.js'), false, 'style appli');
   js += wrap(asset('nav.js'), false, 'menu rapide');

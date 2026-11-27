@@ -175,7 +175,7 @@
     Object.keys(nav).filter((p) => p !== '/home' && p !== '/quests')
       .sort((a, b) => (nav[b].n || 0) - (nav[a].n || 0)).slice(0, 9)
       .forEach((p) => tiles.push([iconFor(p, nav[p].l), nav[p].l, 'go:' + p]));
-    tiles.push(['🔄', 'Recharger', 'reload'], ['📋', 'Copier pour Claude', 'copy'], ['🤖', 'Bots & réglages', 'settings']);
+    tiles.push(['🔄', 'Recharger', 'reload'], ['📊', 'Test perf', 'perf'], ['📋', 'Copier pour Claude', 'copy'], ['🤖', 'Bots & réglages', 'settings']);
     html += tiles.map(([i, l, a]) => `<div class="tile" data-a="${esc(a)}"><i>${i}</i><span>${esc(l)}</span></div>`).join('');
     html += '</div>';
     if (Object.keys(nav).length < 3) html += '<p class="hint">Les autres rubriques du jeu apparaîtront ici dès que tu auras ouvert le menu du jeu une fois.</p>';
@@ -194,6 +194,7 @@
     closeAll();
     if (a === 'back') history.back();
     else if (a === 'reload') location.reload();
+    else if (a === 'perf') { const t = window.__rbfPerf ? window.__rbfPerf.info() : 'Mesure indisponible'; toast(t); try { navigator.clipboard.writeText(t); } catch (err) { /* rien */ } }
     else if (a === 'settings') settings();
     else if (a === 'copy') copyForClaude();
     else if (a.startsWith('go:')) goTo(a.slice(3));
@@ -244,7 +245,10 @@
     h += chip('always_x2', '⏩', 'Toujours x2', S.opt.always_x2) + chip('always_auto', '🤖', 'Toujours AUTO', S.opt.always_auto);
     h += '</div><div class="sec">Turbo<em>en plus du x2 du jeu · s\'applique tout de suite</em></div>';
     h += turboChips(parseFloat(localStorage.getItem('rbf_turbo')) || (S.opt.turbo2 ? 2 : S.opt.turbo15 ? 1.5 : 1));
-    h += `<div class="card">${item('fluide', '🎞️', 'Mode fluide', 'Moins de ralentissements pendant les super techniques', localStorage.getItem('rbf_fluide') !== '0')}</div>`;
+    h += `<div class="card">${item('fluide', '🎞️', 'Moins de particules', 'Allège les effets pendant les combats', localStorage.getItem('rbf_fluide') !== '0')}</div>`;
+    const pl = localStorage.getItem('rbf_perf') || '1';
+    h += '<div class="sec">Performance<em>s\'applique au rechargement</em></div>';
+    h += `<div class="chips tgrid">${[['0', '🎨 Qualité'], ['1', '⚖️ Équilibré'], ['2', '🚀 Maximum']].map(([v, l]) => `<div class="chip${pl === v ? ' on' : ''}" data-p="${v}">${l}</div>`).join('')}</div>`;
     h += `<div class="sec">Mes scripts<em>${ANDROID ? 'appui long' : 'clic droit'} pour supprimer</em></div><div class="card">`;
     if (!S.custom.length) h += '<p class="empty">Aucun script. Ajoute ton bot d\'arène ou un autre script Tampermonkey.</p>';
     S.custom.forEach((c, i) => { h += item('custom:' + i, '📄', c.name || 'Script', c.on !== false ? 'Activé' : 'Désactivé', c.on !== false); });
@@ -277,6 +281,14 @@
     if (e.target.closest('[data-add]')) { addScript(); return; }
     const tt = e.target.closest('[data-t]');
     if (tt) { setTurbo(tt, panel); return; }
+    const pp = e.target.closest('[data-p]');
+    if (pp) {
+      try { localStorage.setItem('rbf_perf', pp.dataset.p); } catch (err) { /* rien */ }
+      panel.querySelectorAll('[data-p]').forEach((c) => c.classList.toggle('on', c === pp));
+      dirty = true; // rechargement à la fermeture du panneau
+      toast('Performance : ' + pp.textContent.trim() + ' (appliqué en fermant le panneau)');
+      return;
+    }
     const fl = e.target.closest('[data-k="fluide"]');
     if (fl) {
       const on = localStorage.getItem('rbf_fluide') === '0';
