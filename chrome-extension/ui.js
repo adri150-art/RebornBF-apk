@@ -248,7 +248,9 @@ try{
     h += chip('always_x2', '⏩', 'Toujours x2', S.opt.always_x2) + chip('always_auto', '🤖', 'Toujours AUTO', S.opt.always_auto);
     h += '</div><div class="sec">Turbo<em>en plus du x2 du jeu · s\'applique tout de suite</em></div>';
     h += turboChips(parseFloat(localStorage.getItem('rbf_turbo')) || (S.opt.turbo2 ? 2 : S.opt.turbo15 ? 1.5 : 1));
-    h += `<div class="card">${item('fluide', '🎞️', 'Moins de particules', 'Allège les effets pendant les combats', localStorage.getItem('rbf_fluide') !== '0')}</div>`;
+    const fx = localStorage.getItem('rbf_fx') || '1';
+    h += '<div class="sec">Sparks et cristaux<em>moins = plus fluide · tout de suite</em></div>';
+    h += `<div class="chips tgrid">${[['0', '✨ Tous'], ['1', '⚖️ Réduits'], ['2', '🚀 Minimum']].map(([v, l]) => `<div class="chip${fx === v ? ' on' : ''}" data-fx="${v}">${l}</div>`).join('')}</div>`;
     const pl = localStorage.getItem('rbf_perf') || '1';
     h += '<div class="sec">Performance<em>s\'applique au rechargement</em></div>';
     h += `<div class="chips tgrid">${[['0', '🎨 Qualité'], ['1', '⚖️ Équilibré'], ['2', '🚀 Maximum']].map(([v, l]) => `<div class="chip${pl === v ? ' on' : ''}" data-p="${v}">${l}</div>`).join('')}</div>`;
@@ -284,6 +286,13 @@ try{
     if (e.target.closest('[data-add]')) { addScript(); return; }
     const tt = e.target.closest('[data-t]');
     if (tt) { setTurbo(tt, panel); return; }
+    const fxc = e.target.closest('[data-fx]');
+    if (fxc) {
+      try { localStorage.setItem('rbf_fx', fxc.dataset.fx); } catch (err) { /* rien */ }
+      panel.querySelectorAll('[data-fx]').forEach((c) => c.classList.toggle('on', c === fxc));
+      toast({ 0: 'Sparks et cristaux : comme le jeu', 1: 'Sparks et cristaux réduits', 2: 'Minimum : très peu de sparks, pas d\'effets de fond' }[fxc.dataset.fx]);
+      return;
+    }
     const pp = e.target.closest('[data-p]');
     if (pp) {
       try { localStorage.setItem('rbf_perf', pp.dataset.p); } catch (err) { /* rien */ }

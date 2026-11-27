@@ -85,8 +85,34 @@
     game.loop.callback = wrapped;
   }
 
+  // Allègement des effets : le jeu sait déjà limiter les sparks et les cristaux affichés (réglages du jeu,
+  // « sparkDisplayLimit » 50 et « dropDisplayLimit » 500 par défaut). On baisse ces limites pendant le combat seulement,
+  // sans toucher aux réglages enregistrés du compte : les super techniques gardent leurs effets.
+  // rbf_fx : 0 = comme le jeu · 1 = réduit (par défaut) · 2 = minimum
+  const FX = {
+    1: { sparkDisplayLimit: 12, dropDisplayLimit: 30 },
+    2: { sparkDisplayLimit: 4, dropDisplayLimit: 8, backgroundEffects: false },
+  };
+  function lighten(s) {
+    if (typeof s.setOptions !== 'function' || !s.options) return;
+    const lvl = localStorage.getItem('rbf_fx') || '1';
+    const want = FX[lvl];
+    if (!want) return;
+    const patch = {};
+    Object.keys(want).forEach((k) => {
+      const cur = s.options[k];
+      const v = typeof want[k] === 'number' ? Math.min(want[k], typeof cur === 'number' ? cur : want[k]) : want[k];
+      if (cur !== v) patch[k] = v;
+    });
+    if (Object.keys(patch).length) { try { s.setOptions(patch); } catch (e) { /* rien */ } }
+  }
+
   // Vérification rapide (4 fois par seconde) pour que le turbo démarre dès le début du combat
-  setInterval(() => { hook(); turbo(); }, 250);
+  setInterval(() => {
+    hook(); turbo();
+    if (armed || !inBattle()) return;
+    try { const sc = game && game.scene.getScene('battle'); if (sc && sc.sys.isActive() && sc.controls) lighten(sc); } catch (e) { /* rien */ }
+  }, 250);
 
   setInterval(() => {
     hook();
@@ -97,6 +123,7 @@
       if (!(s && s.sys.isActive() && s.controls)) s = null;
     } catch (e) { s = null; }
     if (!s) return;
+    lighten(s);
     const now = Date.now();
     if (now - last < 2000) return;
     if (WANT_AUTO && !s.controls.auto) { last = now; s.onControl(HIT_AUTO); }
