@@ -1,0 +1,1 @@
+(globalThis.TURBOPACK||(globalThis.TURBOPACK=[])).push(["object"==typeof document?document.currentScript:void 0,961031,(e,t,r)=>{"use strict";e.i(322659),Object.defineProperty(r,"__esModule",{value:!0}),Object.defineProperty(r,"HeadManagerContext",{enumerable:!0,get:function(){return o}});let o=e.r(836437)._(e.r(154409)).default.createContext({})}]);
