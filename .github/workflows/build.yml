@@ -34,24 +34,24 @@ jobs:
       - name: Renommer
         run: |
           cp app/build/outputs/apk/release/app-release.apk RebornBF.apk
-          cp public/build/outputs/apk/release/public-release.apk BF-Reborn-public.apk
+          cp public/build/outputs/apk/release/public-release.apk bf_reborn_Android.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: RebornBF-apk
           path: |
             RebornBF.apk
-            BF-Reborn-public.apk
+            bf_reborn_Android.apk
 
       - name: Publier la version
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Reborn BF 1.0.${{ github.run_number }}
-          body: RebornBF.apk = appli perso avec bots · BF-Reborn-public.apk = le jeu tel quel, sans ajouts.
+          body: RebornBF.apk = appli perso avec bots · bf_reborn_Android.apk = le jeu tel quel, sans ajouts.
           files: |
             RebornBF.apk
-            BF-Reborn-public.apk
+            bf_reborn_Android.apk
           make_latest: true
 
   windows:
