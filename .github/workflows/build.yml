@@ -23,24 +23,42 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Logo du jeu pour la version publique
+        continue-on-error: true
+        run: |
+          curl -fsSL https://rebornbf.com/icons/icon-512.png -o /tmp/icon.png
+          R=public/src/main/res
+          for s in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            d=${s%%:*}; n=${s##*:}
+            convert /tmp/icon.png -resize ${n}x${n} $R/mipmap-$d/ic_launcher.png
+          done
+          # Icône adaptative : logo au centre de la zone visible, fond sombre du jeu
+          convert /tmp/icon.png -resize 288x288 -background none -gravity center -extent 432x432 $R/drawable-nodpi/ic_fg.png
+
       - name: Compiler
-        run: gradle assembleRelease --no-daemon --stacktrace
+        run: gradle :app:assembleRelease :public:assembleRelease --no-daemon --stacktrace
 
       - name: Renommer
-        run: cp app/build/outputs/apk/release/app-release.apk RebornBF.apk
+        run: |
+          cp app/build/outputs/apk/release/app-release.apk RebornBF.apk
+          cp public/build/outputs/apk/release/public-release.apk BF-Reborn-public.apk
 
       - uses: actions/upload-artifact@v4
         with:
           name: RebornBF-apk
-          path: RebornBF.apk
+          path: |
+            RebornBF.apk
+            BF-Reborn-public.apk
 
       - name: Publier la version
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: Reborn BF 1.0.${{ github.run_number }}
-          body: APK à installer sur le téléphone (RebornBF.apk).
-          files: RebornBF.apk
+          body: RebornBF.apk = appli perso avec bots · BF-Reborn-public.apk = le jeu tel quel, sans ajouts.
+          files: |
+            RebornBF.apk
+            BF-Reborn-public.apk
           make_latest: true
 
   windows:
