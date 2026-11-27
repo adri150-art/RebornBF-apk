@@ -93,7 +93,33 @@
     1: { sparkDisplayLimit: 12, dropDisplayLimit: 30 },
     2: { sparkDisplayLimit: 4, dropDisplayLimit: 8, backgroundEffects: false },
   };
+  // Les effets des attaques sont dessinés sur une grande image recopiée à chaque image du jeu : c'est ce qui sature.
+  // On garde les effets, mais on les redessine moins souvent (1 image sur 2, ou 1 sur 3 au minimum)
+  // et on évite d'en empiler trop en même temps. Les coups et les dégâts ne changent pas.
+  const fxLevel = () => +(localStorage.getItem('rbf_fx') || '1');
+  function patchEffects(fx) {
+    const P = fx && Object.getPrototypeOf(fx);
+    if (!P || P.__rbfFx || typeof P.update !== 'function' || typeof P.start !== 'function') return;
+    P.__rbfFx = true;
+    const update = P.update, start = P.start;
+    P.update = function (t) {
+      const lvl = fxLevel();
+      if (lvl > 0 && this.running && this.running.length > 1) {
+        this.__rbfN = (this.__rbfN || 0) + 1;
+        if (this.__rbfN % (lvl >= 2 ? 3 : 2)) return undefined;
+      }
+      return update.call(this, t);
+    };
+    P.start = function (t, e, i, s2) {
+      const lvl = fxLevel();
+      const cap = lvl >= 2 ? 6 : lvl === 1 ? 12 : Infinity;
+      if (this.running && this.running.length >= cap) return undefined;
+      return start.call(this, t, e, i, s2);
+    };
+  }
+
   function lighten(s) {
+    try { patchEffects(s.effects); } catch (e) { /* rien */ }
     if (typeof s.setOptions !== 'function' || !s.options) return;
     const lvl = localStorage.getItem('rbf_fx') || '1';
     const want = FX[lvl];
