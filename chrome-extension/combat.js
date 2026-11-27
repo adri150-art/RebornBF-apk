@@ -16,12 +16,33 @@ try{
   let game = null;
   let last = 0;
 
+  // Mode fluide (activé par défaut) : quand une super technique fait trop ramer le combat,
+  // on dessine une image sur deux (le combat continue à la même vitesse) et on limite les particules.
+  let fluide = true;
+  const readFluide = () => { fluide = localStorage.getItem('rbf_fluide') !== '0'; };
+  readFluide();
+  const inBattle = () => location.pathname.startsWith('/battle');
+
   function hook() {
     const P = window.Phaser;
     if (!P || !P.Scenes || !P.Scenes.SceneManager || P.__rbfCombatHook) return;
     const update = P.Scenes.SceneManager.prototype.update;
     P.Scenes.SceneManager.prototype.update = function (...a) { game = this.game; return update.apply(this, a); };
     P.__rbfCombatHook = true;
+    // Particules : moitié moins par jet, et pas plus de 40 à la fois par effet pendant les combats
+    const PE = P.GameObjects && P.GameObjects.Particles && P.GameObjects.Particles.ParticleEmitter;
+    if (PE && PE.prototype.emitParticle && !PE.__rbfFluide) {
+      const emit = PE.prototype.emitParticle;
+      PE.prototype.emitParticle = function (count, x, y) {
+        if (fluide && inBattle()) {
+          const alive = this.alive ? this.alive.length : 0;
+          if (alive > 40) return null;
+          if (count > 1) count = Math.ceil(count / 2);
+        }
+        return emit.call(this, count, x, y);
+      };
+      PE.__rbfFluide = true;
+    }
   }
 
   // Turbo : on fait avancer le temps du jeu plus vite, seulement pendant les combats.
@@ -50,14 +71,28 @@ try{
   }
 
   let wrapped = null;
+  let lastT = 0, avg = 16.7, heavyUntil = 0, frame = 0;
   function turbo() {
     readLevel();
+    readFluide();
     updateArm();
     if (!game || !game.loop || typeof game.loop.callback !== 'function') return;
     if (game.loop.callback === wrapped) return;
     const cb = game.loop.callback;
+    const g = game;
     wrapped = function (time, delta) {
-      return cb.call(this, time, level > 1 && armed && location.pathname.startsWith('/battle') ? Math.min(delta, 50) * level : delta);
+      const battle = inBattle();
+      const dd = level > 1 && armed && battle ? Math.min(delta, 50) * level : delta;
+      if (fluide && battle && typeof g.headlessStep === 'function') {
+        // Cadence réelle des images : si elle tombe sous ~38 images/s, on allège pendant 2,5 s
+        const d = time - lastT;
+        lastT = time;
+        if (d > 0 && d < 500) avg = avg * 0.9 + d * 0.1;
+        const now = performance.now();
+        if (avg > 26) heavyUntil = now + 2500;
+        if (now < heavyUntil && (++frame & 1)) return g.headlessStep(time, dd); // calcule sans dessiner
+      }
+      return cb.call(this, time, dd);
     };
     game.loop.callback = wrapped;
   }

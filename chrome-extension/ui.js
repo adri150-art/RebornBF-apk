@@ -247,6 +247,7 @@ try{
     h += chip('always_x2', '⏩', 'Toujours x2', S.opt.always_x2) + chip('always_auto', '🤖', 'Toujours AUTO', S.opt.always_auto);
     h += '</div><div class="sec">Turbo<em>en plus du x2 du jeu · s\'applique tout de suite</em></div>';
     h += turboChips(parseFloat(localStorage.getItem('rbf_turbo')) || (S.opt.turbo2 ? 2 : S.opt.turbo15 ? 1.5 : 1));
+    h += `<div class="card">${item('fluide', '🎞️', 'Mode fluide', 'Moins de ralentissements pendant les super techniques', localStorage.getItem('rbf_fluide') !== '0')}</div>`;
     h += `<div class="sec">Mes scripts<em>${ANDROID ? 'appui long' : 'clic droit'} pour supprimer</em></div><div class="card">`;
     if (!S.custom.length) h += '<p class="empty">Aucun script. Ajoute ton bot d\'arène ou un autre script Tampermonkey.</p>';
     S.custom.forEach((c, i) => { h += item('custom:' + i, '📄', c.name || 'Script', c.on !== false ? 'Activé' : 'Désactivé', c.on !== false); });
@@ -279,6 +280,14 @@ try{
     if (e.target.closest('[data-add]')) { addScript(); return; }
     const tt = e.target.closest('[data-t]');
     if (tt) { setTurbo(tt, panel); return; }
+    const fl = e.target.closest('[data-k="fluide"]');
+    if (fl) {
+      const on = localStorage.getItem('rbf_fluide') === '0';
+      try { localStorage.setItem('rbf_fluide', on ? '1' : '0'); } catch (err) { /* rien */ }
+      fl.querySelector('.sw').classList.toggle('on', on);
+      toast(on ? 'Mode fluide activé' : 'Mode fluide désactivé');
+      return;
+    }
     const el = e.target.closest('[data-k]');
     if (!el) return;
     const [kind, key] = el.dataset.k.split(':');
