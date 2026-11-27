@@ -1,5 +1,7 @@
 name: Analyse du jeu (temporaire)
 on: workflow_dispatch
+permissions:
+  contents: write
 jobs:
   inspect:
     runs-on: ubuntu-latest
@@ -17,7 +19,10 @@ jobs:
             grep -ohE 'static/chunks/[A-Za-z0-9._/-]+\.js' *.js | sort -u | while read c; do f="$(echo /_next/$c | tr '/' '_')"; [ -f "$f" ] || curl -fsSL -A "$UA" "https://rebornbf.com/_next/$c" -o "$f" || true; done
           done
           ls | wc -l; du -sh .
-      - uses: actions/upload-artifact@v4
-        with:
-          name: game-js
-          path: js/
+      - name: Envoyer sur une branche à part (analyse)
+        run: |
+          cd js
+          git init -q && git checkout -q -b analyse
+          git config user.email bot@example.com && git config user.name bot
+          git add -A && git commit -qm "code du jeu"
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" analyse
