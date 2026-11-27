@@ -24,22 +24,9 @@ jobs:
           gradle-version: '8.9'
 
       - name: Logo du jeu pour la version publique
-        continue-on-error: true
         run: |
-          # L'icône de l'onglet du site (favicon) : petit dessin en pixels, agrandi sans flou
-          curl -fsSL https://rebornbf.com/favicon.ico -o /tmp/fav.ico
-          idx=$(identify -format "%p %w\n" /tmp/fav.ico | sort -k2 -n | tail -1 | cut -d' ' -f1)
-          convert "/tmp/fav.ico[$idx]" -background none /tmp/fav.png
-          R=public/src/main/res
-          for s in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
-            d=${s%%:*}; n=${s##*:}
-            convert /tmp/fav.png -filter point -resize ${n}x${n} $R/mipmap-$d/ic_launcher.png
-          done
-          # Icône adaptative : le dessin au centre, fond de la même couleur que son bord
-          bg=$(convert /tmp/fav.png -format "%[hex:p{1,1}]" info: | cut -c1-6)
-          convert /tmp/fav.png -filter point -resize 336x336 -background none -gravity center -extent 432x432 $R/drawable-nodpi/ic_fg.png
-          sed -i "s|<color name=\"ic_bg\">#[0-9A-Fa-f]*</color>|<color name=\"ic_bg\">#$bg</color>|" $R/values/res.xml
-          grep ic_bg $R/values/res.xml
+          pip install --quiet pillow
+          python3 tools/make_public_icon.py
 
       - name: Compiler
         run: gradle :app:assembleRelease :public:assembleRelease --no-daemon --stacktrace
