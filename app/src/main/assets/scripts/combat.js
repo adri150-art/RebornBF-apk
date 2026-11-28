@@ -96,7 +96,7 @@
   // Les effets des attaques sont dessinés sur une grande image recopiée à chaque image du jeu : c'est ce qui sature.
   // On garde les effets, mais on les redessine moins souvent (1 image sur 2, ou 1 sur 3 au minimum)
   // et on évite d'en empiler trop en même temps. Les coups et les dégâts ne changent pas.
-  const fxLevel = () => +(localStorage.getItem('rbf_fx') || '1');
+  const fxLevel = () => 1; // toujours allégé : combats fluides sans perdre les effets
   function patchEffects(fx) {
     const P = fx && Object.getPrototypeOf(fx);
     if (!P || P.__rbfFx || typeof P.update !== 'function' || typeof P.start !== 'function') return;
@@ -121,7 +121,7 @@
   function lighten(s) {
     try { patchEffects(s.effects); } catch (e) { /* rien */ }
     if (typeof s.setOptions !== 'function' || !s.options) return;
-    const lvl = localStorage.getItem('rbf_fx') || '1';
+    const lvl = '1';
     const want = FX[lvl];
     if (!want) return;
     const patch = {};

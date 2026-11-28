@@ -175,7 +175,7 @@
     Object.keys(nav).filter((p) => p !== '/home' && p !== '/quests')
       .sort((a, b) => (nav[b].n || 0) - (nav[a].n || 0)).slice(0, 9)
       .forEach((p) => tiles.push([iconFor(p, nav[p].l), nav[p].l, 'go:' + p]));
-    tiles.push(['🔄', 'Recharger', 'reload'], ['📊', 'Test perf', 'perf'], ['📋', 'Copier pour Claude', 'copy'], ['🤖', 'Bots & réglages', 'settings']);
+    tiles.push(['🔄', 'Recharger', 'reload'], ['📋', 'Copier pour Claude', 'copy'], ['🤖', 'Bots & réglages', 'settings']);
     html += tiles.map(([i, l, a]) => `<div class="tile" data-a="${esc(a)}"><i>${i}</i><span>${esc(l)}</span></div>`).join('');
     html += '</div>';
     if (Object.keys(nav).length < 3) html += '<p class="hint">Les autres rubriques du jeu apparaîtront ici dès que tu auras ouvert le menu du jeu une fois.</p>';
@@ -245,12 +245,6 @@
     h += chip('always_x2', '⏩', 'Toujours x2', S.opt.always_x2) + chip('always_auto', '🤖', 'Toujours AUTO', S.opt.always_auto);
     h += '</div><div class="sec">Turbo<em>en plus du x2 du jeu · s\'applique tout de suite</em></div>';
     h += turboChips(parseFloat(localStorage.getItem('rbf_turbo')) || (S.opt.turbo2 ? 2 : S.opt.turbo15 ? 1.5 : 1));
-    const fx = localStorage.getItem('rbf_fx') || '1';
-    h += '<div class="sec">Effets de combat<em>moins = plus fluide · tout de suite</em></div>';
-    h += `<div class="chips tgrid">${[['0', '✨ Tous'], ['1', '⚖️ Réduits'], ['2', '🚀 Minimum']].map(([v, l]) => `<div class="chip${fx === v ? ' on' : ''}" data-fx="${v}">${l}</div>`).join('')}</div>`;
-    const pl = localStorage.getItem('rbf_perf') || '1';
-    h += '<div class="sec">Performance<em>s\'applique au rechargement</em></div>';
-    h += `<div class="chips tgrid">${[['0', '🎨 Qualité'], ['1', '⚖️ Équilibré'], ['2', '🚀 Maximum']].map(([v, l]) => `<div class="chip${pl === v ? ' on' : ''}" data-p="${v}">${l}</div>`).join('')}</div>`;
     h += `<div class="sec">Mes scripts<em>${ANDROID ? 'appui long' : 'clic droit'} pour supprimer</em></div><div class="card">`;
     if (!S.custom.length) h += '<p class="empty">Aucun script. Ajoute ton bot d\'arène ou un autre script Tampermonkey.</p>';
     S.custom.forEach((c, i) => { h += item('custom:' + i, '📄', c.name || 'Script', c.on !== false ? 'Activé' : 'Désactivé', c.on !== false); });
