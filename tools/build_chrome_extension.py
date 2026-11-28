@@ -122,6 +122,17 @@ def main():
             'js': files, 'run_at': 'document_start', 'world': 'MAIN', 'all_frames': False,
         }],
     }
+    # Interface de combat HD : les images du jeu sont redirigées vers leur version agrandie (branche hd-assets)
+    use = [l.strip() for l in open(os.path.join(ROOT, 'hd', 'use.txt'), encoding='utf-8') if l.strip()]
+    rules = [{
+        'id': i + 1, 'priority': 1,
+        'action': {'type': 'redirect', 'redirect': {'url': 'https://raw.githubusercontent.com/adri150-art/RebornBF-apk/hd-assets/' + f}},
+        'condition': {'urlFilter': '|https://assets.rebornbf.com/assets/original/' + f, 'resourceTypes': ['image', 'xmlhttprequest', 'other']},
+    } for i, f in enumerate(use)]
+    json.dump(rules, open(os.path.join(OUT, 'hd_rules.json'), 'w', encoding='utf-8'), indent=1)
+    manifest['permissions'] = ['declarativeNetRequest']
+    manifest['host_permissions'] = ['https://assets.rebornbf.com/*']
+    manifest['declarative_net_request'] = {'rule_resources': [{'id': 'hd', 'enabled': True, 'path': 'hd_rules.json'}]}
     json.dump(manifest, open(os.path.join(OUT, 'manifest.json'), 'w', encoding='utf-8'), indent=2, ensure_ascii=False)
     print('extension :', OUT, files)
 

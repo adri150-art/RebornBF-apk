@@ -42,6 +42,7 @@ import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -349,7 +350,52 @@ public class MainActivity extends Activity {
         return url != null && isGame(Uri.parse(url));
     }
 
+    // Interface de combat en HD : images agrandies (fournies dans l'appli) servies à la place de celles du jeu
+    private static final String ORIG = "https://assets.rebornbf.com/assets/original/";
+    private java.util.Set<String> hdFiles;
+
+    private java.util.Set<String> hdFiles() {
+        if (hdFiles == null) {
+            hdFiles = new HashSet<>();
+            try (InputStream in = getAssets().open("hd/use.txt")) {
+                for (String l : new String(readAll(in), "UTF-8").split("\n")) if (!l.trim().isEmpty()) hdFiles.add(l.trim());
+            } catch (Exception e) { /* pas de pack HD */ }
+        }
+        return hdFiles;
+    }
+
+    private static byte[] readAll(InputStream in) throws java.io.IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        byte[] b = new byte[16384];
+        int n;
+        while ((n = in.read(b)) > 0) out.write(b, 0, n);
+        return out.toByteArray();
+    }
+
+    private WebResourceResponse hdImage(String url) {
+        if (url == null || !url.startsWith(ORIG) || !opt("hdui", true)) return null;
+        String path = url.substring(ORIG.length());
+        int q = path.indexOf('?');
+        if (q >= 0) path = path.substring(0, q);
+        if (!hdFiles().contains(path)) return null;
+        try {
+            InputStream in = getAssets().open("hd/" + path);
+            java.util.Map<String, String> h = new java.util.HashMap<>();
+            h.put("Access-Control-Allow-Origin", "*");
+            h.put("Cache-Control", "max-age=31536000");
+            return new WebResourceResponse("image/png", null, 200, "OK", h, in);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private class GameClient extends WebViewClient {
+        @Override
+        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest req) {
+            WebResourceResponse r = hdImage(req.getUrl().toString());
+            return r != null ? r : super.shouldInterceptRequest(view, req);
+        }
+
         private final boolean isPopup;
 
         GameClient(boolean isPopup) { this.isPopup = isPopup; }
@@ -621,8 +667,8 @@ public class MainActivity extends Activity {
     }
 
     private static final String[] OPTS = {"remaster", "infos", "appfeel", "haptic", "antipause", "screen_on", "fullscreen",
-            "format169", "hd", "always_x2", "always_auto", "notifications", "turbo15", "turbo2", "background"};
-    private static final boolean[] OPT_DEF = {true, true, true, true, true, true, true, true, false, true, false, true, false, false, true};
+            "format169", "hd", "always_x2", "always_auto", "notifications", "turbo15", "turbo2", "background", "hdui"};
+    private static final boolean[] OPT_DEF = {true, true, true, true, true, true, true, true, false, true, false, true, false, false, true, true};
 
     /** Réglages au format de l'interface (bots, options, scripts). */
     private JSONObject settingsJson() {

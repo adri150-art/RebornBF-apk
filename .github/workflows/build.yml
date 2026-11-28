@@ -23,6 +23,14 @@ jobs:
         with:
           gradle-version: '8.9'
 
+      - name: Interface de combat HD (pack d'images)
+        run: |
+          git clone -q --depth 1 -b hd-assets https://github.com/${{ github.repository }}.git /tmp/hd
+          mkdir -p app/src/main/assets/hd
+          cp hd/use.txt app/src/main/assets/hd/use.txt
+          while read f; do [ -n "$f" ] && mkdir -p "app/src/main/assets/hd/$(dirname "$f")" && cp "/tmp/hd/$f" "app/src/main/assets/hd/$f"; done < hd/use.txt
+          du -sh app/src/main/assets/hd
+
       - name: Logo du jeu pour la version publique
         run: |
           pip install --quiet pillow

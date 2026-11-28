@@ -32,5 +32,20 @@
       "world": "MAIN",
       "all_frames": false
     }
-  ]
+  ],
+  "permissions": [
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "https://assets.rebornbf.com/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "hd",
+        "enabled": true,
+        "path": "hd_rules.json"
+      }
+    ]
+  }
 }

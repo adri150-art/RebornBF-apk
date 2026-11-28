@@ -265,6 +265,7 @@ try{
     h += item('opt:antipause', '⏯️', 'Anti-pause', 'Le jeu continue quand la fenêtre est derrière', S.opt.antipause);
     h += item('opt:notifications', '🔔', 'Notifications', 'Prévient quand un bot s\'arrête', S.opt.notifications);
     h += item('opt:hd', '🖼️', 'Filtre HD', 'Images un peu plus nettes et colorées', S.opt.hd);
+    h += item('opt:hdui', '💎', 'Interface de combat HD', 'Cadres, barres et boutons du combat remasterisés en HD', S.opt.hdui !== false);
     if (ANDROID) {
       h += item('opt:haptic', '📳', 'Vibrations', 'Petite vibration quand tu touches un bouton', S.opt.haptic !== false);
       h += item('opt:screen_on', '💡', 'Écran toujours allumé', 'Pas de mise en veille pendant le jeu', S.opt.screen_on !== false);
