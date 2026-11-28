@@ -16,7 +16,6 @@ PARTS = [
     ('gamedata.js', 'gamedata', 'true', False),
     ('unitplus.js', 'unitplus', 'S.opt.remaster', False),
     ('gameinfo.js', 'gameinfo', 'S.opt.infos', False),
-    ('hd.js', 'hd', 'S.opt.hd', False),
     ('combat.js', 'combat', 'true', False),
     ('farm.js', 'farm', 'true', False),
     ('aventure.js', 'aventure', 'S.bots.aventure', True),

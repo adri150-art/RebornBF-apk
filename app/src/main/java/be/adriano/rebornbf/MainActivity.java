@@ -636,7 +636,6 @@ public class MainActivity extends Activity {
         sb.append(wrap(asset("gamedata.js"), false, "données du jeu"));
         if (opt("remaster", true)) sb.append(wrap(asset("unitplus.js"), false, "fiche d'unité"));
         if (opt("infos", true)) sb.append(wrap(asset("gameinfo.js"), false, "infos du jeu"));
-        if (opt("hd", false)) sb.append(wrap(asset("hd.js"), false, "filtre HD"));
         boolean auto = opt("always_auto", false), x2 = opt("always_x2", true);
         String turbo = opt("turbo2", false) ? "2" : opt("turbo15", false) ? "1.5" : "1";
         {
@@ -1323,7 +1322,6 @@ public class MainActivity extends Activity {
         optionRow(box, "screen_on", "Écran toujours allumé", "L'écran ne se met pas en veille pendant que le jeu est ouvert.", true);
         optionRow(box, "fullscreen", "Plein écran", "Cache les barres du téléphone.", true);
         optionRow(box, "format169", "Format du jeu (16:9)", "Garde les proportions prévues par le jeu : plus de grand vide noir, rien sous la caméra. Le bouton ☰ se range dans la bande du bas.", true);
-        optionRow(box, "hd", "Filtre HD", "Images un peu plus nettes et colorées.", false);
 
         LinearLayout actions = new LinearLayout(this);
         actions.setOrientation(LinearLayout.HORIZONTAL);
