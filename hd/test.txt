@@ -1,0 +1,5 @@
+battle/battle_ui/card_frame.png
+battle/battle_header_ip5.png
+battle/battle_ui/od_frame.png
+battle/battle_ui/boss_band.png
+battle/battle_auto_btn1.png
