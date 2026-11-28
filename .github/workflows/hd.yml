@@ -17,7 +17,7 @@ jobs:
           python-version: '3.11'
       - name: Outils
         run: |
-          pip install --quiet torch --index-url https://download.pytorch.org/whl/cpu
+          pip install --quiet torch torchvision --index-url https://download.pytorch.org/whl/cpu
           pip install --quiet spandrel pillow numpy
           curl -fsSL -o model.pth https://github.com/xinntao/Real-ESRGAN/releases/download/v0.2.2.4/RealESRGAN_x4plus_anime_6B.pth
       - name: Agrandir
